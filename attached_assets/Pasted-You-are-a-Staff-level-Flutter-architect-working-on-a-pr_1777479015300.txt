@@ -1,0 +1,300 @@
+You are a Staff-level Flutter architect working on a production enterprise 
+application. Your task is to enhance "Poulina AI OpsHub" with precision 
+and zero regressions. Every decision must reflect principal-level engineering.
+
+═══════════════════════════════════════════════
+MISSION
+═══════════════════════════════════════════════
+Add 4 critical features to the existing app:
+1. Splash Screen
+2. Login Screen with mock auth (Zabbix SSO ready)
+3. Full Light/Dark theme system
+4. Professional UI polish across all screens
+
+STRICT RULES:
+- Do NOT remove or break any existing screen or feature
+- Do NOT change existing navigation structure
+- Only ADD — never subtract
+- Every new component must follow the existing design language
+- All new code must be null-safe, typed, and production-ready
+- No TODO comments, no placeholders, no hardcoded values
+
+═══════════════════════════════════════════════
+FEATURE 1 — SPLASH SCREEN
+═══════════════════════════════════════════════
+Route: / (root, first screen on cold launch)
+
+Layout:
+- Full screen, theme-aware background
+- Poulina logo centered (120px height), fade-in 600ms ease-in-out
+- App name "Poulina AI OpsHub" below logo
+  Font: Inter 22px semibold, theme-aware text color
+- Tagline: "Intelligent Infrastructure Monitoring"
+  Font: Inter 14px regular, #9d9d9d color
+- Subtle loading indicator at bottom (linear, #204e8f color)
+
+Logic:
+- On mount: check local storage for valid session token
+- If valid session → navigate to Dashboard after 2s
+- If no session → navigate to Login after 2s
+- Minimum display time: 2 seconds (even if check is faster)
+- Animation: logo fades in, then name slides up 20px
+
+═══════════════════════════════════════════════
+FEATURE 2 — LOGIN SCREEN
+═══════════════════════════════════════════════
+Route: /login
+This screen is shown after Splash if no valid session exists.
+Auth guard: if user tries to access any protected route 
+without session → redirect to /login
+
+Visual Layout (top to bottom):
+┌─────────────────────────────────┐
+│                                 │
+│     [Poulina Logo 100px]        │
+│                                 │
+│   Poulina AI OpsHub             │  ← 24px bold
+│   Welcome back                  │  ← 14px #9d9d9d
+│                                 │
+│  ┌─────────────────────────┐    │
+│  │ 👤  Username            │    │
+│  └─────────────────────────┘    │
+│                                 │
+│  ┌─────────────────────────┐    │
+│  │ 🔒  Password        👁  │    │
+│  └─────────────────────────┘    │
+│                                 │
+│  ☐ Remember me                  │
+│                                 │
+│  [      Sign In      ]          │  ← #204e8f full width
+│                                 │
+│  ⚠ Invalid credentials          │  ← shown on error
+│                                 │
+│  v1.0.0 · Poulina Group         │  ← bottom caption
+└─────────────────────────────────┘
+
+Input Fields:
+- Border radius: 12px
+- Border: 1px solid theme-aware (#204e8f on focus, #9d9d9d default)
+- Background: theme-aware surface color
+- Text: theme-aware
+- Icons: left-aligned, #9d9d9d color
+- Password: right eye icon toggles visibility
+
+Sign In Button:
+- Full width, border radius 12px, height 52px
+- Background: #204e8f, text: white, font: 16px semibold
+- Loading state: replace text with CircularProgressIndicator (white)
+- Disabled state during loading: opacity 0.7
+
+Error handling:
+- Inline error message below button in #e53935
+- Shake animation on fields when error occurs
+- Clear error on next input change
+
+Mock Authentication Logic:
+- Accept ANY username + password combination
+- Simulate 1.5s network delay (loading state)
+- Store in local storage: { username, token: "mock-token-[timestamp]", 
+  loginTime: timestamp, rememberMe: bool }
+- Remember me = true → session expires in 30 days
+- Remember me = false → session expires in 8 hours
+- Navigate to Dashboard on success
+
+Zabbix SSO Ready (architecture):
+- Auth service must be abstracted behind an interface
+- MockAuthService implements AuthService for now
+- ZabbixAuthService (stubbed, not wired) ready to replace mock:
+    POST /api_jsonrpc.php
+    { method: "user.login", params: { username, password } }
+- Switching from mock to real = change one line in DI
+
+Session Management:
+- On every app launch: validate session expiry
+- On expiry: show re-auth bottom sheet (password only, username pre-filled)
+- Logout: clear all local storage + navigate to Login
+
+═══════════════════════════════════════════════
+FEATURE 3 — THEME SYSTEM
+═══════════════════════════════════════════════
+This is a system-wide change. Every color in the app must 
+use ThemeData tokens — zero hardcoded hex values in widgets.
+
+Token definitions:
+
+DARK THEME:
+  scaffold background: #0f1923
+  surface: #1a2535
+  primary: #204e8f
+  secondary: #9d9d9d
+  accent: #4a90d9
+  onPrimary: #ffffff
+  onSurface: #ffffff
+  onBackground: #ffffff
+  border: rgba(32, 78, 143, 0.15)
+  cardShadow: rgba(32, 78, 143, 0.2) blur 12px
+
+LIGHT THEME:
+  scaffold background: #f4f6fa
+  surface: #ffffff
+  primary: #204e8f
+  secondary: #9d9d9d
+  accent: #4a90d9
+  onPrimary: #ffffff
+  onSurface: #0f1923
+  onBackground: #0f1923
+  border: #e0e0e0
+  cardShadow: rgba(0,0,0,0.08) blur 8px
+
+Semantic colors (same in both themes):
+  disaster: #b71c1c
+  high: #e53935
+  average: #ff9800
+  warning: #fdd835
+  info: #42a5f5
+  ok: #43a047
+  error: #e53935
+  success: #43a047
+
+Theme persistence:
+- Store preference in local storage: "dark" | "light" | "system"
+- Default: "system" (follow OS)
+- Apply instantly on change, no app restart needed
+- ThemeMode.system / ThemeMode.dark / ThemeMode.light
+
+Theme toggle:
+- In Dashboard header: sun/moon icon button (top right)
+- In Settings → Appearance: segmented control (Dark | Light | System)
+- Both controls stay in sync
+
+Components that MUST adapt:
+✅ Bottom navigation bar
+✅ All cards and list tiles
+✅ All input fields
+✅ All modals and bottom sheets
+✅ All charts (background, grid lines, labels)
+✅ Severity badges (semantic colors only, no theme change)
+✅ App bar / headers
+✅ Skeleton loaders
+✅ Empty state illustrations
+✅ Dialogs and alerts
+✅ Toggle switches and checkboxes
+
+═══════════════════════════════════════════════
+FEATURE 4 — UI POLISH
+═══════════════════════════════════════════════
+Apply to ALL screens without exception:
+
+CARDS:
+- Border radius: 16px (all cards, everywhere)
+- Padding: 16px internal
+- Dark mode: background surface + left glow border #204e8f 15% opacity
+- Light mode: background white + border #e0e0e0 + drop shadow
+- No flat cards — every card must have depth
+
+BOTTOM NAVIGATION:
+- Top border: 1px solid theme-aware divider color
+- Active item: icon + label in #204e8f
+- Inactive item: icon + label in #9d9d9d
+- Smooth indicator animation on tab switch
+- Background: theme-aware surface
+
+TYPOGRAPHY (enforce everywhere):
+- Page titles: 28px bold
+- Section headers: 22px semibold  
+- Card titles: 18px semibold
+- Body text: 14px regular
+- Metadata / timestamps: 12px regular #9d9d9d
+- Font family: Inter throughout
+
+SEVERITY BADGES (enforce everywhere):
+- Pill shape, border radius 20px
+- Padding: 4px 10px
+- Font: 11px semibold uppercase
+- DISASTER: bg #b71c1c, text white, pulse animation
+- HIGH: bg #e53935, text white
+- AVERAGE: bg #ff9800, text white
+- WARNING: bg #fdd835, text #0f1923
+- INFO: bg #42a5f5, text white
+- OK: bg #43a047, text white
+
+ANIMATIONS:
+- Page transitions: fade + slide up 20px, 200ms ease-out
+- Cards stagger: 50ms delay between each card on list load
+- DISASTER badge: subtle pulse every 2s (scale 1.0 → 1.05 → 1.0)
+- Buttons: scale down 0.97 on press, spring back on release
+- Charts: draw animation 500ms ease-out on first render
+- Theme switch: crossfade 300ms
+
+SKELETON LOADING:
+- Replace all loading spinners in lists with skeleton shimmer
+- Shimmer direction: left to right
+- Skeleton color: theme-aware (dark: #1a2535 → #243048, 
+  light: #e0e0e0 → #f5f5f5)
+- Show 3-5 skeleton cards while loading
+
+EMPTY STATES:
+Every list screen must have an empty state:
+- Incidents empty: shield icon + "No active incidents" + "All systems operational 🎉"
+- Hosts empty: server icon + "No hosts configured" + "Add hosts in Zabbix"
+- ChatOps empty: chat icon + "Start a conversation" + "Ask me about your infrastructure"
+- Reports empty: chart icon + "No data available" + "Check your date range"
+
+DASHBOARD HEADER GREETING:
+- 06:00–11:59 → "Good morning, {firstname} ☀️"
+- 12:00–17:59 → "Good afternoon, {firstname} 👋"
+- 18:00–23:59 → "Good evening, {firstname} 🌙"
+- 00:00–05:59 → "Working late, {firstname} 🌙"
+- firstname = first word of logged-in user's display name
+
+ERROR STATES:
+- Connection lost: red banner at top "⚠ Connection lost — retrying..."
+- API error: inline error with retry button
+- Offline: grey banner "📡 Offline — showing cached data"
+- All banners: dismissible, auto-hide after 5s if connection restored
+
+═══════════════════════════════════════════════
+NAVIGATION FLOW (COMPLETE)
+═══════════════════════════════════════════════
+/ (Splash)
+  ├── has session → /dashboard
+  └── no session → /login
+        └── success → /dashboard
+              ├── /incidents
+              │     └── /incidents/:id
+              ├── /chatops
+              │     └── /chatops?incident_id=XXX
+              ├── /infrastructure
+              │     └── /infrastructure/hosts/:id
+              ├── /reports (Admin + DevOps only)
+              └── /settings
+                    └── /settings/users (Admin only)
+
+Auth guard on all routes except / and /login.
+Role guard on /reports and /settings/users.
+
+═══════════════════════════════════════════════
+QUALITY GATES
+═══════════════════════════════════════════════
+Before considering this done, verify:
+□ App launches → Splash → Login (cold start, no session)
+□ Login with any credentials → Dashboard
+□ Dashboard shows correct greeting by time
+□ Theme toggle works instantly on all screens
+□ Light mode looks professional (not washed out)
+□ Dark mode unchanged from existing
+□ All cards have 16px radius and proper shadows
+□ Severity badges consistent across all screens
+□ Skeleton shimmer shows on list load
+□ Empty states show when lists are empty
+□ Session persists across app restart (remember me)
+□ Logout clears session and returns to Login
+□ No broken navigation or regressions on existing screens
+
+═══════════════════════════════════════════════
+FINAL NOTE
+═══════════════════════════════════════════════
+This app represents Poulina Group's internal infrastructure 
+monitoring platform. It will be used daily by operations teams.
+Quality, reliability, and professional aesthetics are non-negotiable.
+Treat this as a product shipping to the App Store next week.
