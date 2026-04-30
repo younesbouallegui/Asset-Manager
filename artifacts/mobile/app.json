@@ -4,21 +4,28 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/poulina-logo.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/images/poulina-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#204e8f"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "icon": "./assets/images/poulina-logo.png"
     },
-    "android": {},
+    "android": {
+      "icon": "./assets/images/poulina-logo.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/poulina-logo.png",
+        "backgroundColor": "#204e8f"
+      }
+    },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/poulina-logo.png"
     },
     "plugins": [
       [

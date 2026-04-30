@@ -111,7 +111,7 @@ export default function SplashRoute() {
     >
       <View style={styles.center}>
         <Animated.View style={logoStyle}>
-          <PoulinaLogo size={120} />
+          <PoulinaLogo size={140} />
         </Animated.View>
         <Animated.Text
           style={[

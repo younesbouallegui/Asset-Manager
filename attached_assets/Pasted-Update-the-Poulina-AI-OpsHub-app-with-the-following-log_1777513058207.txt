@@ -1,0 +1,65 @@
+Update the Poulina AI OpsHub app with the following 
+logo and app icon changes. This affects branding only.
+Do NOT change any other feature or screen.
+
+═══════════════════════════════════════════════
+CHANGE 1 — APP ICON (what appears on phone home screen)
+═══════════════════════════════════════════════
+- Remove current placeholder/generated app icon
+- Replace with the uploaded Poulina logo PNG (transparent background)
+- The logo must be used as-is, no modifications
+- Generate all required sizes for iOS and Android:
+    iOS: 1024x1024 (App Store) + all required sizes
+    Android: 512x512 (Play Store) + all required sizes
+- Background behind logo on app icon: #204e8f (Poulina blue)
+- Logo centered, padding 20% from edges
+- No rounded corners added by app (OS handles this)
+
+═══════════════════════════════════════════════
+CHANGE 2 — SPLASH SCREEN LOGO
+═══════════════════════════════════════════════
+- Remove current placeholder logo
+- Replace with uploaded Poulina logo PNG (transparent)
+- Size: 140px height, auto width (maintain aspect ratio)
+- Position: centered vertically and horizontally
+- NO background box, NO border, NO shadow around logo
+- Logo works on both dark (#0f1923) and light (#f4f6fa) 
+  backgrounds because it has transparent background
+- If logo has dark elements: ensure visibility on dark bg
+  by using a white version or adding subtle glow
+- Fade-in animation: 600ms ease-in-out on app launch
+
+═══════════════════════════════════════════════
+CHANGE 3 — LOGIN SCREEN LOGO
+═══════════════════════════════════════════════
+- Remove current placeholder icon (the blue hexagon icon)
+- Replace with uploaded Poulina logo PNG (transparent)
+- Size: 100px height, auto width (maintain aspect ratio)
+- Position: top center of screen
+- NO container, NO rounded box, NO background behind logo
+- Logo displayed directly on screen background
+- Works correctly in both light and dark mode
+
+═══════════════════════════════════════════════
+CHANGE 4 — ABOUT SCREEN LOGO
+═══════════════════════════════════════════════
+- Use same Poulina logo PNG (transparent)
+- Size: 80px height, centered
+- No container around it
+
+═══════════════════════════════════════════════
+ASSET INSTRUCTIONS
+═══════════════════════════════════════════════
+- Asset name: poulina_logo.png
+- Use this single asset everywhere (splash, login, about, app icon)
+- Transparent background — works on any color background
+- Do not stretch or distort — always maintain aspect ratio
+- The user will upload the PNG directly in Atoms asset manager
+
+═══════════════════════════════════════════════
+DO NOT CHANGE
+═══════════════════════════════════════════════
+- Any existing screen layout
+- Any existing features or navigation
+- Any colors, fonts, or design tokens
+- Only replace logo/icon assets — nothing else
