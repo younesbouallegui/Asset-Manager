@@ -122,6 +122,19 @@ export default function AppLayout() {
               headerTintColor: colors.primary,
             }}
           />
+          <Stack.Screen
+            name="settings/about"
+            options={{
+              headerShown: true,
+              title: "About OpsHub",
+              headerStyle: { backgroundColor: colors.background },
+              headerTitleStyle: {
+                color: colors.onBackground,
+                fontFamily: "Inter_600SemiBold",
+              },
+              headerTintColor: colors.primary,
+            }}
+          />
         </Stack>
       </Animated.View>
       <ReauthSheet />

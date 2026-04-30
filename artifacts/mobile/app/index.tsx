@@ -12,7 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BrandMark } from "@/components/BrandMark";
+import { PoulinaLogo } from "@/components/PoulinaLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -111,7 +111,7 @@ export default function SplashRoute() {
     >
       <View style={styles.center}>
         <Animated.View style={logoStyle}>
-          <BrandMark size={120} />
+          <PoulinaLogo size={120} />
         </Animated.View>
         <Animated.Text
           style={[

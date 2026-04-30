@@ -232,8 +232,9 @@ export default function SettingsScreen() {
             <Switch
               value={pushNotifs}
               onValueChange={setPushNotifs}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#fff"
+              trackColor={{ false: "#e0e0e0", true: colors.primary }}
+              thumbColor="#ffffff"
+              ios_backgroundColor="#e0e0e0"
             />
           }
         />
@@ -246,8 +247,9 @@ export default function SettingsScreen() {
             <Switch
               value={emailDigest}
               onValueChange={setEmailDigest}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#fff"
+              trackColor={{ false: "#e0e0e0", true: colors.primary }}
+              thumbColor="#ffffff"
+              ios_backgroundColor="#e0e0e0"
             />
           }
         />
@@ -260,8 +262,9 @@ export default function SettingsScreen() {
             <Switch
               value={biometric}
               onValueChange={setBiometric}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#fff"
+              trackColor={{ false: "#e0e0e0", true: colors.primary }}
+              thumbColor="#ffffff"
+              ios_backgroundColor="#e0e0e0"
             />
           }
         />
@@ -299,6 +302,7 @@ export default function SettingsScreen() {
           icon="info"
           label="About OpsHub"
           hint="v1.0.0 · Poulina Group"
+          onPress={() => router.push("/(app)/settings/about")}
           tint={colors.mutedForeground}
         />
       </Card>

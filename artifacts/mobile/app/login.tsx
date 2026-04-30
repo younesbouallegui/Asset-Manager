@@ -19,7 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BrandMark } from "@/components/BrandMark";
+import { PoulinaLogo } from "@/components/PoulinaLogo";
 import { Input } from "@/components/Input";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { useAuth } from "@/contexts/AuthContext";
@@ -98,7 +98,7 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.brandWrap}>
-        <BrandMark size={84} />
+        <PoulinaLogo size={100} />
         <Text
           style={[
             styles.title,

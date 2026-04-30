@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
+import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
@@ -74,7 +75,7 @@ function StatCard({
           ? colors.severityHigh
           : colors.primary;
   return (
-    <Card style={styles.statCard}>
+    <Card style={styles.statCardInner}>
       <View
         style={[
           styles.iconBubble,
@@ -83,23 +84,26 @@ function StatCard({
       >
         <Feather name={icon} size={16} color={tint} />
       </View>
+      <View style={styles.statValueWrap}>
+        <Text
+          style={{
+            color: colors.onSurface,
+            fontFamily: "Inter_700Bold",
+            fontSize: 28,
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {value}
+        </Text>
+      </View>
       <Text
         style={{
-          color: colors.onSurface,
-          fontFamily: "Inter_700Bold",
-          fontSize: 24,
-          marginTop: 12,
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={{
-          color: colors.mutedForeground,
-          fontFamily: "Inter_500Medium",
+          color: "#9d9d9d",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
-          marginTop: 4,
         }}
+        numberOfLines={1}
       >
         {label}
       </Text>
@@ -162,6 +166,8 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,16 +230,20 @@ export default function DashboardScreen() {
             style={{
               color: colors.onBackground,
               fontFamily: "Inter_700Bold",
-              fontSize: 28,
-              marginTop: 4,
+              fontSize: 26,
+              lineHeight: 32,
+              marginTop: 6,
             }}
-            numberOfLines={1}
           >
             {g.line}
           </Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable
+            onPress={() => {
+              setNotifOpen(true);
+              setUnreadCount(0);
+            }}
             style={[
               styles.iconBtn,
               {
@@ -245,19 +255,21 @@ export default function DashboardScreen() {
             ]}
           >
             <Feather name="bell" size={18} color={colors.primary} />
-            <View
-              style={[styles.notifDot, { backgroundColor: colors.severityHigh }]}
-            >
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 9,
-                  fontFamily: "Inter_700Bold",
-                }}
+            {unreadCount > 0 ? (
+              <View
+                style={[styles.notifDot, { backgroundColor: colors.severityHigh }]}
               >
-                3
-              </Text>
-            </View>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 9,
+                    fontFamily: "Inter_700Bold",
+                  }}
+                >
+                  {unreadCount}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
           <ThemeToggleButton />
         </View>
@@ -268,10 +280,10 @@ export default function DashboardScreen() {
       <View style={styles.statsGrid}>
         {loading ? (
           <>
-            <View style={styles.statCard}><Skeleton height={64} radius={16} /></View>
-            <View style={styles.statCard}><Skeleton height={64} radius={16} /></View>
-            <View style={styles.statCard}><Skeleton height={64} radius={16} /></View>
-            <View style={styles.statCard}><Skeleton height={64} radius={16} /></View>
+            <View style={styles.statCard}><Skeleton height={120} radius={16} /></View>
+            <View style={styles.statCard}><Skeleton height={120} radius={16} /></View>
+            <View style={styles.statCard}><Skeleton height={120} radius={16} /></View>
+            <View style={styles.statCard}><Skeleton height={120} radius={16} /></View>
           </>
         ) : (
           <>
@@ -530,6 +542,10 @@ export default function DashboardScreen() {
       </Pressable>
 
       <SafeBottomPad />
+      <NotificationsSheet
+        visible={notifOpen}
+        onClose={() => setNotifOpen(false)}
+      />
     </ScrollView>
   );
 }
@@ -575,7 +591,18 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: "48%",
-    flexGrow: 1,
+    height: 120,
+  },
+  statCardInner: {
+    flex: 1,
+    padding: 16,
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  statValueWrap: {
+    width: "100%",
+    flex: 1,
+    justifyContent: "center",
   },
   iconBubble: {
     width: 32,

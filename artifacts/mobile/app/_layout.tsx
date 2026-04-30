@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,8 +26,14 @@ const queryClient = new QueryClient();
 
 function ThemedRoot() {
   const colors = useColors();
+  const isDark = colors.scheme === "dark";
   return (
     <View style={[styles.fill, { backgroundColor: colors.background }]}>
+      <StatusBar
+        style={isDark ? "light" : "dark"}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
       <Stack
         screenOptions={{
           headerShown: false,

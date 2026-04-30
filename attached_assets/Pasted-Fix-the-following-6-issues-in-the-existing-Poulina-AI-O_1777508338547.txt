@@ -1,0 +1,162 @@
+Fix the following 6 issues in the existing Poulina AI OpsHub app.
+Do NOT change anything else. Only fix what is listed below.
+
+═══════════════════════════════════════════════
+FIX 1 — LOGO (Login + Splash)
+═══════════════════════════════════════════════
+- Remove the current generated/placeholder logo icon
+- Replace with the real Poulina logo image provided by the user
+- Apply on: Login screen (top, 100px height) 
+  and Splash screen (centered, 120px height)
+- Logo must display correctly on both light and dark backgrounds
+- Do not add any border, shadow, or rounded container around the logo
+- Use the uploaded PNG asset as-is
+
+═══════════════════════════════════════════════
+FIX 2 — LIGHT MODE: STATUS BAR + TEXT VISIBILITY
+═══════════════════════════════════════════════
+Problem: In light mode, the time/battery/signal bar at top 
+is white text on white background — completely invisible.
+
+Fix:
+- Status bar text color in LIGHT mode → dark (#0f1923)
+- Status bar text color in DARK mode → white (#ffffff)
+- Use SystemChrome.setSystemUIOverlayStyle() to set this:
+    Light mode → SystemUiOverlayStyle.dark
+    Dark mode → SystemUiOverlayStyle.light
+- Apply on ALL screens without exception
+- Must update instantly when theme changes
+
+═══════════════════════════════════════════════
+FIX 3 — DASHBOARD KPI CARDS LAYOUT
+═══════════════════════════════════════════════
+Problem: The 4 KPI cards (Active incidents, Hosts up, 
+Avg response, Uptime) are uneven sizes, misaligned, 
+and look messy on phone screen.
+
+Fix:
+- All 4 cards must be EQUAL size
+- Layout: 2x2 grid (2 columns, 2 rows)
+- Each card: fixed height 120px, equal width (50% minus padding)
+- Card content aligned: icon top-left, value center-large, 
+  label bottom-left
+- Consistent padding: 16px inside each card
+- Same border radius: 16px
+- Same font sizes:
+    Value: 28px bold
+    Label: 12px regular #9d9d9d
+- Cards must fit perfectly on any phone screen width
+- No card should be larger or smaller than another
+
+═══════════════════════════════════════════════
+FIX 4 — NOTIFICATIONS BUTTON (Push, Email, Biometric)
+═══════════════════════════════════════════════
+Problem A: In light mode, toggle switches when OFF appear 
+white/invisible against the white background.
+
+Fix toggle OFF state:
+- Track (background): #e0e0e0 (light grey, visible on white)
+- Thumb: #ffffff with subtle shadow
+- This applies to ALL toggle switches in the app
+
+Problem B: Tapping the notification bell icon on Dashboard 
+does nothing.
+
+Fix:
+- Bell icon tap → open a bottom sheet titled "Notifications"
+- Bottom sheet shows last 10 mock notifications as a list
+- Each notification item:
+    - Severity badge (colored)
+    - Title: trigger name
+    - Subtitle: host name + time ago
+    - Unread indicator: blue dot on left
+- "Mark all as read" button at top right of bottom sheet
+- Badge count on bell → clears to 0 after opening
+- Bottom sheet: draggable, handle at top, theme-aware background
+
+═══════════════════════════════════════════════
+FIX 5 — DASHBOARD GREETING TEXT
+═══════════════════════════════════════════════
+Problem: Greeting text "Working late, Younes 🌙" 
+is cut off / not fully visible. Only shows partial text.
+
+Fix:
+- Greeting text must NEVER be truncated
+- Remove maxLines limit on greeting text
+- Set overflow to visible
+- Font size: 26px bold (reduce from current if needed to fit)
+- Allow text to wrap to 2 lines if needed:
+    Line 1: "Working late," 
+    Line 2: "Younes 🌙"
+- Ensure sufficient top padding so text doesn't overlap 
+  with status bar
+- Text color: theme-aware (white in dark, #0f1923 in light)
+
+═══════════════════════════════════════════════
+FIX 6 — ABOUT OPSHUB (Settings → About OpsHub)
+═══════════════════════════════════════════════
+Problem: Tapping "About OpsHub" does nothing / 
+shows nothing useful.
+
+Fix — create a proper About screen:
+- Navigate to a new full screen (not just a popup)
+- Screen title: "About OpsHub"
+
+Screen content (top to bottom):
+┌─────────────────────────────────┐
+│                                 │
+│     [Poulina Real Logo]         │  ← 80px height, centered
+│                                 │
+│   Poulina AI OpsHub             │  ← 22px semibold, centered
+│   v1.0.0                        │  ← 14px #9d9d9d, centered
+│                                 │
+│  ─────────────────────────────  │
+│                                 │
+│  About                          │  ← section header
+│  Poulina AI OpsHub is an        │
+│  enterprise-grade infrastructure│
+│  monitoring and AI-powered      │
+│  incident management platform   │
+│  built for Poulina Group        │
+│  operations teams.              │
+│                                 │
+│  ─────────────────────────────  │
+│                                 │
+│  Technology                     │  ← section header
+│  Built with Flutter             │
+│  Powered by Zabbix API v7.x     │
+│  AI by Claude (Anthropic)       │
+│                                 │
+│  ─────────────────────────────  │
+│                                 │
+│  © 2026 Poulina Group           │  ← 12px centered #9d9d9d
+│  All rights reserved            │
+│                                 │
+└─────────────────────────────────┘
+
+- All text: theme-aware colors
+- Background: theme-aware
+- Back button in top left to return to Settings
+
+═══════════════════════════════════════════════
+GLOBAL RULES FOR ALL FIXES
+═══════════════════════════════════════════════
+- Do NOT touch any existing working feature
+- Do NOT change navigation structure
+- Do NOT modify Dashboard data or charts
+- Apply theme-awareness to every fix
+- Test mentally: does it work in both dark AND light mode?
+- Every fix must work on iPhone SE (small) to iPhone Pro Max (large)
+- Production quality — no quick hacks, proper implementation
+
+═══════════════════════════════════════════════
+PRIORITY ORDER
+═══════════════════════════════════════════════
+Execute fixes in this order:
+1. Status bar visibility (FIX 2) — affects all screens
+2. Logo replacement (FIX 1) — brand identity
+3. Toggle switches visibility (FIX 4A) — usability
+4. KPI cards alignment (FIX 3) — visual quality
+5. Greeting text (FIX 5) — polish
+6. Notification bell (FIX 4B) — functionality
+7. About screen (FIX 6) — completeness
