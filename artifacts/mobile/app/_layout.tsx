@@ -18,6 +18,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ZabbixConfigProvider } from "@/contexts/ZabbixConfigContext";
 import { useColors } from "@/hooks/useColors";
 
 SplashScreen.preventAutoHideAsync();
@@ -72,9 +73,11 @@ export default function RootLayout() {
           <GestureHandlerRootView style={styles.fill}>
             <KeyboardProvider>
               <ThemeProvider>
-                <AuthProvider>
-                  <ThemedRoot />
-                </AuthProvider>
+                <ZabbixConfigProvider>
+                  <AuthProvider>
+                    <ThemedRoot />
+                  </AuthProvider>
+                </ZabbixConfigProvider>
               </ThemeProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

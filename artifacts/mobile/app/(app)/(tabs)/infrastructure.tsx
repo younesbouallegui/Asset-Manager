@@ -27,7 +27,7 @@ import {
   Host,
   HostGroup,
   Template,
-} from "@/services/mockData";
+} from "@/services/dataService";
 
 type Mode = "hosts" | "groups" | "templates";
 

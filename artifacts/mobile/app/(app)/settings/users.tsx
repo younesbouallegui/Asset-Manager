@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/Input";
 import { SkeletonCard } from "@/components/Skeleton";
 import { useColors } from "@/hooks/useColors";
-import { getManagedUsers, ManagedUser } from "@/services/mockData";
+import { getManagedUsers, ManagedUser } from "@/services/dataService";
 
 const ROLE_TINTS: Record<string, "primary" | "info" | "muted"> = {
   Admin: "primary",

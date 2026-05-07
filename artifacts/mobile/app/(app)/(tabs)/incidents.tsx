@@ -25,7 +25,7 @@ import {
   getIncidents,
   Incident,
   Severity,
-} from "@/services/mockData";
+} from "@/services/dataService";
 
 const FILTERS: ("ALL" | Severity)[] = [
   "ALL",
@@ -60,9 +60,7 @@ export default function IncidentsScreen() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -88,23 +86,10 @@ export default function IncidentsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ paddingHorizontal: 20, paddingTop: headerTopPad }}>
-        <Text
-          style={{
-            color: colors.onBackground,
-            fontFamily: "Inter_700Bold",
-            fontSize: 28,
-          }}
-        >
+        <Text style={{ color: colors.onBackground, fontFamily: "Inter_700Bold", fontSize: 28 }}>
           Incidents
         </Text>
-        <Text
-          style={{
-            color: colors.mutedForeground,
-            fontFamily: "Inter_400Regular",
-            fontSize: 13,
-            marginTop: 2,
-          }}
-        >
+        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 2 }}>
           Live triggers across all monitored hosts
         </Text>
         <View style={{ height: 14 }} />
@@ -138,9 +123,7 @@ export default function IncidentsScreen() {
                 <Text
                   style={{
                     color: active ? colors.primaryForeground : colors.onSurface,
-                    fontFamily: active
-                      ? "Inter_600SemiBold"
-                      : "Inter_500Medium",
+                    fontFamily: active ? "Inter_600SemiBold" : "Inter_500Medium",
                     fontSize: 12,
                     letterSpacing: 0.4,
                   }}
@@ -153,42 +136,22 @@ export default function IncidentsScreen() {
         </ScrollView>
       </View>
       {loading ? (
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: tabPad,
-          }}
-        >
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: tabPad }}>
+          <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
         </ScrollView>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(i) => i.id}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: tabPad,
-            flexGrow: 1,
-          }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: tabPad, flexGrow: 1 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <Card style={{ marginTop: 8 }}>
               <EmptyState variant="incidents" />
             </Card>
           }
           renderItem={({ item, index }) => (
-            <Animated.View
-              entering={FadeInDown.delay(index * 50).duration(280)}
-              style={{ marginBottom: 10 }}
-            >
+            <Animated.View entering={FadeInDown.delay(index * 50).duration(280)} style={{ marginBottom: 10 }}>
               <Pressable
                 onPress={() => router.push(`/(app)/incidents/${item.id}`)}
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
@@ -196,41 +159,20 @@ export default function IncidentsScreen() {
                 <Card>
                   <View style={styles.row}>
                     <SeverityBadge severity={item.severity} compact />
-                    <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontFamily: "Inter_400Regular",
-                        fontSize: 12,
-                      }}
-                    >
+                    <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>
                       {item.id} · {formatRelative(item.openedAt)}
                     </Text>
                   </View>
                   <Text
-                    style={{
-                      color: colors.onSurface,
-                      fontFamily: "Inter_600SemiBold",
-                      fontSize: 16,
-                      marginTop: 8,
-                    }}
+                    style={{ color: colors.onSurface, fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 8 }}
                     numberOfLines={2}
                   >
                     {item.title}
                   </Text>
                   <View style={styles.metaRow}>
-                    <Feather
-                      name="server"
-                      size={12}
-                      color={colors.mutedForeground}
-                    />
-                    <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontFamily: "Inter_500Medium",
-                        fontSize: 12,
-                      }}
-                    >
-                      {item.host}
+                    <Feather name="server" size={12} color={colors.mutedForeground} />
+                    <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+                      {item.host || "Unknown host"}
                     </Text>
                     <View
                       style={[
@@ -245,14 +187,7 @@ export default function IncidentsScreen() {
                         },
                       ]}
                     />
-                    <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontFamily: "Inter_500Medium",
-                        fontSize: 12,
-                        textTransform: "capitalize",
-                      }}
-                    >
+                    <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12, textTransform: "capitalize" }}>
                       {item.status}
                     </Text>
                   </View>
@@ -267,27 +202,8 @@ export default function IncidentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginLeft: 6,
-  },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  statusDot: { width: 6, height: 6, borderRadius: 3, marginLeft: 6 },
 });

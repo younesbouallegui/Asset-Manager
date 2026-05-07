@@ -16,7 +16,7 @@ import {
   formatRelative,
   getIncidents,
   Incident,
-} from "@/services/mockData";
+} from "@/services/dataService";
 
 import { SeverityBadge } from "./SeverityBadge";
 

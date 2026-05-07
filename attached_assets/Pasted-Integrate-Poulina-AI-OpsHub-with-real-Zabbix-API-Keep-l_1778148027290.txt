@@ -1,0 +1,316 @@
+Integrate Poulina AI OpsHub with real Zabbix API.
+Keep login screen exactly as is (SSO username/password).
+Add API Token only in Settings for data fetching.
+
+═══════════════════════════════════════════════
+PART 1 — LOGIN (KEEP EXISTING UI, WIRE REAL API)
+═══════════════════════════════════════════════
+Keep login screen design exactly as is.
+Only replace mock auth with real Zabbix API call.
+
+On "Sign In" button tap:
+
+Step 1 — Check server URL configured:
+  Read "zabbix_server_url" from FlutterSecureStorage
+  If empty → show error:
+  "Configure Zabbix server URL in Settings first"
+
+Step 2 — Authenticate:
+POST {serverURL}/api_jsonrpc.php
+{
+  "jsonrpc": "2.0",
+  "method": "user.login",
+  "params": {
+    "username": "{username}",
+    "password": "{password}"
+  },
+  "id": 1
+}
+
+Success → store:
+  "zabbix_auth_token" → result (session token)
+  "zabbix_username" → username
+  "login_timestamp" → now
+
+Failure → inline error:
+  -32602 → "Invalid username or password"
+  Network → "Cannot reach Zabbix server"
+  Other → "Authentication failed. Try again."
+
+Step 3 — Fetch user profile + role:
+POST {serverURL}/api_jsonrpc.php
+{
+  "jsonrpc": "2.0",
+  "method": "user.get",
+  "params": {
+    "output": ["userid","username","name",
+               "surname","roleid","type"],
+    "filter": {"username": ["{username}"]}
+  },
+  "auth": "{session_token}",
+  "id": 2
+}
+
+Map Zabbix type to app role:
+  type 1 (User) → OPERATOR
+  type 2 (Admin) → DEVOPS
+  type 3 (Super Admin) → ADMIN
+
+Store:
+  "user_role" → "ADMIN" | "DEVOPS" | "OPERATOR"
+  "user_display_name" → "{name} {surname}"
+  "user_id" → userid
+
+Step 4 → Navigate to Dashboard
+
+Session management:
+  On app launch → check "zabbix_auth_token" exists
+  → yes: skip login, go Dashboard
+  → no: go Login
+  On API error -32602 → token expired → 
+    clear all storage → redirect to Login
+  Logout → call user.logout + clear storage
+
+═══════════════════════════════════════════════
+PART 2 — SETTINGS: ZABBIX CONNECTION
+═══════════════════════════════════════════════
+In Settings → Zabbix Connection section:
+
+Fields:
+  1. Server URL
+     placeholder: "http://192.168.100.4:8080"
+     stored: "zabbix_server_url"
+
+  2. API Token (for data access)
+     placeholder: "Paste your Zabbix API token"
+     masked + show/hide toggle
+     stored: "zabbix_api_token"
+     subtitle: "Generate in Zabbix → Users → API tokens"
+
+  3. Test Connection button
+     → POST apiinfo.version with API token
+     → "✅ Connected — Zabbix v7.4.8"
+     → "❌ Cannot reach server"
+
+  4. Status indicator:
+     ● Connected (green) / ● Disconnected (red) /
+     ● Not configured (grey)
+
+  5. Last sync timestamp
+
+Note: Login uses session token (from user.login).
+All data API calls use API Token (from Settings).
+Two different tokens — both needed.
+
+═══════════════════════════════════════════════
+PART 3 — ALL ZABBIX DATA APIs (REAL)
+═══════════════════════════════════════════════
+All data calls use API Token from Settings:
+Header auth: "zabbix_api_token"
+
+DASHBOARD (refresh every 30s):
+
+1. Problems:
+method: "problem.get"
+params: {
+  "output": ["eventid","objectid","severity",
+             "clock","name","acknowledged"],
+  "selectAcknowledges": "count",
+  "sortfield": ["severity","clock"],
+  "sortorder": ["DESC","DESC"],
+  "limit": 100
+}
+
+2. Hosts:
+method: "host.get"
+params: {
+  "output": ["hostid","host","name",
+             "available","status"],
+  "selectInterfaces": ["ip"],
+  "filter": {"status": 0}
+}
+available: 1=UP, 2=DOWN, 0=Unknown
+
+3. Severity counts from problems:
+severity: 0=Not classified, 1=Info, 2=Warning,
+          3=Average, 4=High, 5=Disaster
+
+4. Services/SLA:
+method: "service.get"
+params: {
+  "output": ["serviceid","name","status","goodsla"]
+}
+
+INCIDENTS SCREEN:
+method: "problem.get"
+params: {
+  "output": "extend",
+  "selectAcknowledges": "extend",
+  "selectTags": "extend",
+  "recent": true,
+  "sortfield": ["severity","clock"],
+  "sortorder": ["DESC","DESC"]
+}
+
+Get trigger+host per problem:
+method: "trigger.get"
+params: {
+  "output": ["triggerid","description","priority"],
+  "selectHosts": ["hostid","host","name","interfaces"],
+  "selectItems": ["itemid","name","lastvalue","units"],
+  "triggerids": ["{objectid}"]
+}
+
+Acknowledge:
+method: "event.acknowledge"
+params: {
+  "eventids": ["{eventid}"],
+  "action": 6,
+  "message": "Acknowledged via Poulina AI OpsHub"
+}
+
+INFRASTRUCTURE:
+method: "host.get"
+params: {
+  "output": "extend",
+  "selectInterfaces": ["ip","type","main"],
+  "selectGroups": ["groupid","name"],
+  "selectTriggers": "count",
+  "selectItems": "count"
+}
+
+Host detail metrics:
+method: "item.get"
+params: {
+  "output": ["itemid","name","lastvalue",
+             "units","lastclock"],
+  "hostids": ["{hostid}"],
+  "monitored": true,
+  "limit": 30
+}
+
+Historical charts:
+method: "history.get"
+params: {
+  "output": "extend",
+  "history": 0,
+  "itemids": ["{itemid}"],
+  "time_from": {now - 21600},
+  "time_till": {now},
+  "limit": 100
+}
+
+USER MANAGEMENT (Admin only):
+method: "user.get"
+params: {
+  "output": ["userid","username","name",
+             "surname","roleid","type"],
+  "selectRole": ["roleid","name"]
+}
+→ Display in Settings → User Management
+→ Show role badge per user based on type field
+
+ERROR HANDLING:
+  -32602 → session expired → redirect Login
+  Network timeout (10s) → offline banner
+  Any error → inline retry button
+  Log all errors with method name
+
+═══════════════════════════════════════════════
+PART 4 — REAL-TIME & NOTIFICATIONS
+═══════════════════════════════════════════════
+Auto-refresh every 30s:
+  → Re-call problem.get and host.get
+  → Update Dashboard counters silently
+  → "● Live" pulse animation when connected
+  → "Updated Xs ago" counter
+
+New incident detection:
+  Compare new problems with cached list
+  If new problem appears → show in-app banner:
+  "🚨 {severity}: {trigger_name} on {host_name}"
+  Tap banner → open incident detail
+
+Notification bell:
+  Badge = count of unacknowledged problems
+  Tap → bottom sheet with last 10 problems list
+  "Mark all read" → clears badge (not acknowledges in Zabbix)
+
+═══════════════════════════════════════════════
+PART 5 — CHATOPS REAL AI (Claude)
+═══════════════════════════════════════════════
+API Key stored: "anthropic_api_key" in FlutterSecureStorage
+
+POST https://api.anthropic.com/v1/messages
+Headers:
+  x-api-key: {anthropic_api_key}
+  anthropic-version: 2023-06-01
+  content-type: application/json
+
+{
+  "model": "claude-sonnet-4-20250514",
+  "max_tokens": 1024,
+  "system": "{SYSTEM_PROMPT}",
+  "messages": [{full_conversation_history}]
+}
+
+SYSTEM PROMPT (built dynamically at runtime):
+"You are Poulina AI, expert DevOps and infrastructure
+assistant for Poulina Group operations team.
+
+Current Zabbix infrastructure status:
+- Active incidents: {problems_count}
+- Hosts online: {hosts_up}/{hosts_total}  
+- Disaster alerts: {disaster_count}
+- High alerts: {high_count}
+- Recent incidents: {last_5_incidents}
+
+Specialties: Zabbix monitoring, Linux/Windows admin,
+network troubleshooting, incident RCA, performance tuning.
+
+Respond in user's language (EN or FR).
+Use markdown formatting.
+For incidents always provide:
+1. Root cause analysis
+2. Impact assessment
+3. Step-by-step resolution with commands
+4. Prevention recommendations"
+
+When opened from incident (Ask AI button):
+Auto-send immediately:
+"🚨 Analyze this incident:
+Trigger: {trigger_name}
+Host: {host_name} ({host_ip})
+Severity: {severity}
+Duration: {duration}
+Item value: {lastvalue} {units}
+
+Provide full RCA and resolution steps."
+
+Conversation:
+  Full history in memory per session
+  New chat button → clears history
+  Typing indicator (3 animated dots)
+  Markdown rendering in responses
+  Code blocks with copy button
+  Error → inline retry
+
+No API key → banner:
+"Configure Anthropic API key in Settings → AI Configuration"
+[Go to Settings] button
+
+Settings → AI Configuration:
+  "Anthropic API Key" → masked input → save
+  Test button → sends test → ✅ or ❌
+  "Model: claude-sonnet-4-20250514" (read only)
+
+═══════════════════════════════════════════════
+DO NOT CHANGE
+═══════════════════════════════════════════════
+- Login screen UI (keep exactly as is)
+- All screen layouts and designs
+- Theme system dark/light
+- Logo and branding
+- Language system EN/FR
+- Navigation structure
+- Animation system

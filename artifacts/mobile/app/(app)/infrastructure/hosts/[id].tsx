@@ -11,7 +11,7 @@ import {
 import { Card } from "@/components/Card";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useColors } from "@/hooks/useColors";
-import { getHosts, Host } from "@/services/mockData";
+import { getHosts, Host } from "@/services/dataService";
 
 function MiniSpark({ values, color }: { values: number[]; color: string }) {
   return (

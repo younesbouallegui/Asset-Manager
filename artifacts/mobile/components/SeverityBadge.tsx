@@ -10,7 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useColors } from "@/hooks/useColors";
-import { Severity } from "@/services/mockData";
+import { Severity } from "@/services/dataService";
 
 const palette = {
   DISASTER: { bg: "#b71c1c", fg: "#ffffff" },

@@ -18,7 +18,7 @@ import {
   getReport,
   ReportRange,
   ReportSeries,
-} from "@/services/mockData";
+} from "@/services/dataService";
 
 function StatLine({
   label,
