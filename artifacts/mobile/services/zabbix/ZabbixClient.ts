@@ -83,6 +83,15 @@ export interface ZabbixApiInfo {
   version: string;
 }
 
+function normalizeServerUrl(serverUrl: string): string {
+  let url = serverUrl.trim();
+  if (url.endsWith("/api_jsonrpc.php")) {
+    url = url.slice(0, -"/api_jsonrpc.php".length);
+  }
+  url = url.replace(/\/+$/, "");
+  return url;
+}
+
 function withTimeout<T>(promise: Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("TIMEOUT")), TIMEOUT_MS);
@@ -100,6 +109,9 @@ async function rpc<T>(
   token: string | null,
   useBearer: boolean,
 ): Promise<T> {
+  const normalizedUrl = normalizeServerUrl(serverUrl);
+  const endpoint = `${normalizedUrl}/api_jsonrpc.php`;
+
   const body: Record<string, unknown> = {
     jsonrpc: "2.0",
     method,
@@ -119,13 +131,23 @@ async function rpc<T>(
     }
   }
 
-  const res = await withTimeout(
-    fetch(`${serverUrl}/api_jsonrpc.php`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    }),
-  );
+  let res: Response;
+  try {
+    res = await withTimeout(
+      fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      }),
+    );
+  } catch (e) {
+    if (e instanceof TypeError) throw new Error("NETWORK_ERROR");
+    throw e;
+  }
+
+  if (!res.ok) {
+    throw new Error(`HTTP_${res.status}`);
+  }
 
   const json = (await res.json()) as { result?: T; error?: { code: number; data?: string; message?: string } };
 

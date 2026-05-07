@@ -83,9 +83,14 @@ export function ZabbixConfigProvider({ children }: { children: React.ReactNode }
     } catch (e) {
       if (mounted.current) setStatus("disconnected");
       const msg = (e as Error).message;
-      if (msg === "TIMEOUT") return { ok: false, message: "Connection timed out" };
+      if (msg === "TIMEOUT") return { ok: false, message: "Connection timed out — check the server URL" };
+      if (msg === "NETWORK_ERROR") return { ok: false, message: "Cannot reach server — check URL and internet connection" };
+      if (msg === "HTTP_401") return { ok: false, message: "Unauthorized — API token is invalid or expired" };
+      if (msg === "HTTP_403") return { ok: false, message: "Forbidden — check API token permissions in Zabbix" };
+      if (msg === "HTTP_404") return { ok: false, message: "Server URL not found — check the URL path" };
+      if (msg.startsWith("HTTP_")) return { ok: false, message: `Server error: ${msg}` };
       if (msg === "API_TOKEN_MISSING") return { ok: false, message: "API token is required" };
-      return { ok: false, message: "Cannot reach server" };
+      return { ok: false, message: `Error: ${msg}` };
     }
   }, [serverUrl, apiToken]);
 

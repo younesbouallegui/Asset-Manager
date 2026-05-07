@@ -1,0 +1,54 @@
+Fix the Zabbix connection in this React Native / Expo app so it works 100% with a public HTTPS Zabbix server.
+
+THE GOAL:
+The app must connect reliably to https://zabbix.younesblg.com using a Bearer API token that the user pastes in the settings screen. No local IP, no WiFi dependency — works from anywhere.
+
+CHANGES NEEDED:
+
+1. app.json — allow HTTP and HTTPS on both platforms:
+   In the "android" section add:
+     "usesCleartextTraffic": true
+   In the "ios" section add:
+     "infoPlist": {
+       "NSAppTransportSecurity": {
+         "NSAllowsArbitraryLoads": true
+       }
+     }
+
+2. services/zabbix/ZabbixClient.ts — fix the URL construction:
+   The fetch URL is built as: `${serverUrl}/api_jsonrpc.php`
+   Add a helper function that:
+   - Trims whitespace from serverUrl
+   - Removes any trailing slash from serverUrl
+   - Removes /api_jsonrpc.php if the user accidentally included it
+   So the final URL is always: trimmedUrl + "/api_jsonrpc.php"
+   Example: "https://zabbix.younesblg.com" → "https://zabbix.younesblg.com/api_jsonrpc.php"
+
+3. services/zabbix/ZabbixClient.ts — improve error handling in the rpc() function:
+   Wrap the fetch in try/catch and throw descriptive errors:
+   - If fetch throws a TypeError (network unreachable): throw new Error("NETWORK_ERROR")
+   - If response status is not ok (4xx, 5xx): throw new Error("HTTP_" + res.status)
+   - If json.error exists: throw with the Zabbix error message as before
+   Keep the existing TIMEOUT wrapper.
+
+4. contexts/ZabbixConfigContext.tsx — improve testConnection error messages:
+   Map the new error codes to human-readable messages:
+   - "TIMEOUT" → "Connection timed out — check the server URL"
+   - "NETWORK_ERROR" → "Cannot reach server — check URL and internet connection"
+   - "HTTP_401" → "Unauthorized — API token is invalid or expired"
+   - "HTTP_403" → "Forbidden — check API token permissions in Zabbix"
+   - "HTTP_404" → "Server URL not found — check the URL path"
+   - anything starting with "HTTP_" → "Server error: " + the code
+   - default → "Error: " + error message
+
+5. ZabbixConnectionScreen — update the placeholder text:
+   Change the Server URL placeholder from "http://192.168.100.4:8080" to "https://zabbix.younesblg.com"
+   Add a hint text below the Server URL input: "Use your public Zabbix URL (HTTPS recommended)"
+
+6. After all changes run: npx expo start --clear
+
+Files to edit:
+- app.json
+- services/zabbix/ZabbixClient.ts
+- contexts/ZabbixConfigContext.tsx
+- screens/ZabbixConnectionScreen.tsx (or wherever the connection screen is)

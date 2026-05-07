@@ -15,14 +15,20 @@
     },
     "ios": {
       "supportsTablet": false,
-      "icon": "./assets/images/poulina-logo.png"
+      "icon": "./assets/images/poulina-logo.png",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "icon": "./assets/images/poulina-logo.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/poulina-logo.png",
         "backgroundColor": "#204e8f"
-      }
+      },
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/images/poulina-logo.png"

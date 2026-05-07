@@ -113,12 +113,22 @@ export default function ZabbixConnectionScreen() {
           ]}
           value={serverUrl}
           onChangeText={(v) => { setServerUrl(v); setDirty(true); setTestResult(null); }}
-          placeholder="http://192.168.100.4:8080"
+          placeholder="https://zabbix.younesblg.com"
           placeholderTextColor={colors.mutedForeground}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
         />
+        <Text
+          style={{
+            color: colors.mutedForeground,
+            fontFamily: "Inter_400Regular",
+            fontSize: 11,
+            marginTop: 6,
+          }}
+        >
+          Use your public Zabbix URL (HTTPS recommended)
+        </Text>
       </Card>
 
       <View style={{ height: 14 }} />
