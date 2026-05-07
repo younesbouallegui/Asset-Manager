@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -20,6 +20,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ZabbixConfigProvider } from "@/contexts/ZabbixConfigContext";
 import { useColors } from "@/hooks/useColors";
+import { autoConfigPromise } from "@/services/autoConfig";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -57,14 +58,19 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [configReady, setConfigReady] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    autoConfigPromise.then(() => setConfigReady(true));
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && configReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, configReady]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !configReady) return null;
 
   return (
     <SafeAreaProvider>

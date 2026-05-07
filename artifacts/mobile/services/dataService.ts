@@ -294,3 +294,38 @@ export async function sendClaude(
   if (!block) throw new Error("Empty response");
   return block.text;
 }
+
+// ─── free AI (Pollinations — no API key required) ─────────────────────────────
+
+export async function sendFreeAI(
+  messages: { role: "user" | "assistant"; content: string }[],
+  systemPrompt: string,
+): Promise<string> {
+  const payload = {
+    model: "openai-large",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ],
+    private: true,
+    seed: Math.floor(Math.random() * 1_000_000),
+  };
+
+  const res = await fetch("https://text.pollinations.ai/openai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`AI service error ${res.status}: ${txt}`);
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Empty AI response");
+  return content;
+}

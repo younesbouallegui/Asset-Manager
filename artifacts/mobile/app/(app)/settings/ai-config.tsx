@@ -1,276 +1,83 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import React from "react";
+import { ScrollView, Text, View } from "react-native";
 
 import { Card } from "@/components/Card";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useColors } from "@/hooks/useColors";
-import { getAnthropicKey, saveAnthropicKey, sendClaude } from "@/services/dataService";
+
+function InfoRow({ icon, label, value, accent }: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  value: string;
+  accent?: string;
+}) {
+  const colors = useColors();
+  const color = accent ?? colors.primary;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 }}>
+      <View style={{ width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: `${color}1A` }}>
+        <Feather name={icon} size={16} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11, letterSpacing: 0.3 }}>{label}</Text>
+        <Text style={{ color: colors.onSurface, fontFamily: "Inter_600SemiBold", fontSize: 14, marginTop: 1 }}>{value}</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function AiConfigScreen() {
   const colors = useColors();
-  const [apiKey, setApiKeyState] = useState("");
-  const [showKey, setShowKey] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    getAnthropicKey().then((k) => { if (k) setApiKeyState(k); });
-  }, []);
-
-  const save = async () => {
-    await saveAnthropicKey(apiKey.trim());
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const test = async () => {
-    if (!apiKey.trim()) {
-      setTestResult({ ok: false, message: "Enter an API key first" });
-      return;
-    }
-    setTesting(true);
-    setTestResult(null);
-    try {
-      await save();
-      const reply = await sendClaude(
-        apiKey.trim(),
-        [{ role: "user", content: "Reply with exactly: OK" }],
-        "You are a test assistant.",
-      );
-      setTestResult({ ok: true, message: `Connected — Model: claude-sonnet-4-20250514` });
-      void reply;
-    } catch (e) {
-      const msg = (e as Error).message;
-      if (msg === "INVALID_API_KEY") {
-        setTestResult({ ok: false, message: "Invalid API key" });
-      } else if (msg === "RATE_LIMIT") {
-        setTestResult({ ok: true, message: "Key valid (rate limited)" });
-      } else {
-        setTestResult({ ok: false, message: "Cannot reach Anthropic API" });
-      }
-    } finally {
-      setTesting(false);
-    }
-  };
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-      keyboardShouldPersistTaps="handled"
     >
-      <Text
-        style={{
-          color: colors.mutedForeground,
-          fontFamily: "Inter_400Regular",
-          fontSize: 13,
-          lineHeight: 19,
-          marginBottom: 20,
-        }}
-      >
-        Configure your Anthropic API key to enable AI-powered incident analysis and ChatOps.
-      </Text>
-
-      <SectionHeader title="API Key" />
-      <Card style={{ gap: 4 }}>
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>
-          Anthropic API Key
-        </Text>
-        <View style={{ position: "relative" }}>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: colors.onSurface,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-                paddingRight: 44,
-              },
-            ]}
-            value={apiKey}
-            onChangeText={(v) => { setApiKeyState(v); setTestResult(null); setSaved(false); }}
-            placeholder="sk-ant-…"
-            placeholderTextColor={colors.mutedForeground}
-            secureTextEntry={!showKey}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Pressable
-            onPress={() => setShowKey((v) => !v)}
-            style={styles.eyeBtn}
-            hitSlop={8}
-          >
-            <Feather
-              name={showKey ? "eye-off" : "eye"}
-              size={16}
-              color={colors.mutedForeground}
-            />
-          </Pressable>
+      <Card style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20, backgroundColor: `${colors.success}10`, borderColor: colors.success }}>
+        <View style={{ width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: `${colors.success}20` }}>
+          <Feather name="check-circle" size={22} color={colors.success} />
         </View>
-      </Card>
-
-      <View style={{ height: 14 }} />
-      <SectionHeader title="Model" />
-      <Card>
-        <View style={styles.modelRow}>
-          <View style={[styles.modelIcon, { backgroundColor: `${colors.primary}14` }]}>
-            <Feather name="cpu" size={16} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.onSurface,
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 14,
-              }}
-            >
-              claude-sonnet-4-20250514
-            </Text>
-            <Text
-              style={{
-                color: colors.mutedForeground,
-                fontFamily: "Inter_400Regular",
-                fontSize: 12,
-                marginTop: 2,
-              }}
-            >
-              Anthropic · Read-only
-            </Text>
-          </View>
-        </View>
-      </Card>
-
-      {testResult ? <View style={{ height: 12 }} /> : null}
-      {testResult ? (
-        <Card
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            backgroundColor: testResult.ok ? `${colors.success}14` : `${colors.severityHigh}14`,
-            borderColor: testResult.ok ? colors.success : colors.severityHigh,
-          }}
-        >
-          <Feather
-            name={testResult.ok ? "check-circle" : "x-circle"}
-            size={18}
-            color={testResult.ok ? colors.success : colors.severityHigh}
-          />
-          <Text
-            style={{
-              color: testResult.ok ? colors.success : colors.severityHigh,
-              fontFamily: "Inter_500Medium",
-              fontSize: 14,
-              flex: 1,
-            }}
-          >
-            {testResult.message}
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.success, fontFamily: "Inter_700Bold", fontSize: 15 }}>AI Ready — No key required</Text>
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+            ChatOps uses a built-in free AI. No API key or account needed.
           </Text>
-        </Card>
-      ) : null}
+        </View>
+      </Card>
+
+      <SectionHeader title="Active Model" />
+      <Card style={{ gap: 10 }}>
+        <InfoRow icon="cpu" label="Provider" value="Pollinations AI" />
+        <InfoRow icon="zap" label="Model" value="OpenAI Large (GPT-4o class)" accent={colors.accent} />
+        <InfoRow icon="globe" label="Access" value="Free · No authentication" accent={colors.success} />
+        <InfoRow icon="lock" label="Privacy" value="Private mode enabled" accent={colors.severityInfo} />
+      </Card>
 
       <View style={{ height: 20 }} />
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <Pressable
-          onPress={save}
-          style={({ pressed }) => [
-            styles.btn,
-            {
-              flex: 1,
-              backgroundColor: saved ? colors.success : colors.surface,
-              borderColor: saved ? colors.success : colors.border,
-              borderWidth: 1,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <Feather
-            name={saved ? "check" : "save"}
-            size={15}
-            color={saved ? "#fff" : colors.onSurface}
-          />
-          <Text
-            style={{
-              color: saved ? "#fff" : colors.onSurface,
-              fontFamily: "Inter_600SemiBold",
-              fontSize: 14,
-            }}
-          >
-            {saved ? "Saved" : "Save"}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={test}
-          disabled={testing}
-          style={({ pressed }) => [
-            styles.btn,
-            { flex: 2, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          {testing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Feather name="zap" size={15} color="#fff" />
-          )}
-          <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
-            {testing ? "Testing…" : "Save & Test"}
-          </Text>
-        </Pressable>
-      </View>
+      <SectionHeader title="Capabilities" />
+      <Card style={{ gap: 8 }}>
+        {[
+          { icon: "activity" as const, text: "Incident root cause analysis" },
+          { icon: "server" as const, text: "Host & infrastructure diagnostics" },
+          { icon: "tool" as const, text: "Step-by-step remediation guides" },
+          { icon: "trending-up" as const, text: "Performance tuning recommendations" },
+          { icon: "message-circle" as const, text: "English & French language support" },
+        ].map(({ icon, text }) => (
+          <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Feather name={icon} size={14} color={colors.primary} />
+            <Text style={{ color: colors.onSurface, fontFamily: "Inter_400Regular", fontSize: 13 }}>{text}</Text>
+          </View>
+        ))}
+      </Card>
+
+      <View style={{ height: 20 }} />
+      <Card style={{ backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}30` }}>
+        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 }}>
+          The ChatOps AI connects to Pollinations.ai, a free public AI service. No data is stored permanently. For maximum accuracy, connect Zabbix to provide real-time infrastructure context.
+        </Text>
+      </Card>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    marginBottom: 6,
-    letterSpacing: 0.3,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-  },
-  eyeBtn: {
-    position: "absolute",
-    right: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-  },
-  modelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  modelIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 13,
-    borderRadius: 14,
-  },
-});

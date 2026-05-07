@@ -18,7 +18,9 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeMode } from "@/contexts/ThemeContext";
 import { ConnectionStatus, useZabbixConfig } from "@/contexts/ZabbixConfigContext";
+import { useBiometric } from "@/hooks/useBiometric";
 import { useColors } from "@/hooks/useColors";
+import { useNotifications } from "@/hooks/useNotifications";
 
 type FeatherIcon = React.ComponentProps<typeof Feather>["name"];
 
@@ -91,13 +93,13 @@ export default function SettingsScreen() {
   const { mode } = useThemeMode();
   const { session, logout } = useAuth();
   const zabbix = useZabbixConfig();
+  const { enabled: pushEnabled, toggle: togglePush } = useNotifications();
+  const { enabled: biometricEnabled, available: biometricAvailable, toggle: toggleBiometric } = useBiometric();
 
   const tabPad = (Platform.OS === "web" ? 84 : 56 + insets.bottom) + 16;
   const headerTopPad = isWeb ? 67 + 12 : insets.top + 8;
 
-  const [pushNotifs, setPushNotifs] = React.useState(true);
   const [emailDigest, setEmailDigest] = React.useState(false);
-  const [biometric, setBiometric] = React.useState(true);
 
   const themeLabel =
     mode === "system" ? "Match system" : mode === "dark" ? "Dark" : "Light";
@@ -199,8 +201,8 @@ export default function SettingsScreen() {
           hint="Real-time incident alerts"
           right={
             <Switch
-              value={pushNotifs}
-              onValueChange={setPushNotifs}
+              value={pushEnabled}
+              onValueChange={togglePush}
               trackColor={{ false: "#e0e0e0", true: colors.primary }}
               thumbColor="#ffffff"
               ios_backgroundColor="#e0e0e0"
@@ -226,14 +228,15 @@ export default function SettingsScreen() {
         <Row
           icon="shield"
           label="Biometric unlock"
-          hint="Face ID / fingerprint"
+          hint={biometricAvailable ? "Face ID / fingerprint" : "Not available on this device"}
           right={
             <Switch
-              value={biometric}
-              onValueChange={setBiometric}
+              value={biometricEnabled}
+              onValueChange={toggleBiometric}
               trackColor={{ false: "#e0e0e0", true: colors.primary }}
               thumbColor="#ffffff"
               ios_backgroundColor="#e0e0e0"
+              disabled={!biometricAvailable && Platform.OS !== "web"}
             />
           }
         />
@@ -253,9 +256,9 @@ export default function SettingsScreen() {
         <Row
           icon="cpu"
           label="AI Configuration"
-          hint="Anthropic Claude · ChatOps AI"
+          hint="Built-in AI · No key required"
           onPress={() => router.push("/(app)/settings/ai-config")}
-          tint={colors.accent}
+          tint={colors.success}
         />
       </Card>
 

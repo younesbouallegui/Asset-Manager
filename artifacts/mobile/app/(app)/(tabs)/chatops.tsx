@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
@@ -14,15 +14,11 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Card } from "@/components/Card";
 import { useColors } from "@/hooks/useColors";
 import {
-  getAnthropicKey,
-  getDashboardStats,
   getIncidents,
   Incident,
-  LiveDashboardStats,
-  sendClaude,
+  sendFreeAI,
 } from "@/services/dataService";
 
 type Msg = {
@@ -43,19 +39,22 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-function buildSystemPrompt(stats: LiveDashboardStats | null, incidents: Incident[]): string {
+function buildSystemPrompt(incidents: Incident[]): string {
   const last5 = incidents
     .slice(0, 5)
     .map((i) => `  - [${i.severity}] ${i.title} on ${i.host || "unknown"}`)
     .join("\n");
 
+  const active = incidents.filter((i) => i.status === "OPEN").length;
+  const disasters = incidents.filter((i) => i.severity === "DISASTER").length;
+  const highs = incidents.filter((i) => i.severity === "HIGH").length;
+
   return `You are Poulina AI, expert DevOps and infrastructure assistant for Poulina Group operations team.
 
 Current Zabbix infrastructure status:
-- Active incidents: ${stats?.activeIncidents ?? "unknown"}
-- Hosts online: ${stats?.hostsUp ?? "unknown"}/${stats?.totalHosts ?? "unknown"}
-- Disaster alerts: ${stats?.severityCounts?.DISASTER ?? 0}
-- High alerts: ${stats?.severityCounts?.HIGH ?? 0}
+- Active incidents: ${active}
+- Disaster alerts: ${disasters}
+- High alerts: ${highs}
 - Recent incidents:
 ${last5 || "  None"}
 
@@ -80,29 +79,6 @@ Status: ${incident.status}
 Provide full root cause analysis and resolution steps.`;
 }
 
-function NoKeyBanner() {
-  const colors = useColors();
-  return (
-    <View style={[styles.noKeyBanner, { backgroundColor: `${colors.severityAverage}14`, borderColor: colors.severityAverage }]}>
-      <Feather name="alert-circle" size={18} color={colors.severityAverage} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.onSurface, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
-          Anthropic API key not configured
-        </Text>
-        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-          Configure your key in Settings to enable AI responses.
-        </Text>
-      </View>
-      <Pressable
-        onPress={() => router.push("/(app)/settings/ai-config")}
-        style={[styles.goBtn, { backgroundColor: colors.primary }]}
-      >
-        <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Setup</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 export default function ChatOpsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -110,9 +86,7 @@ export default function ChatOpsScreen() {
   const params = useLocalSearchParams<{ incident_id?: string }>();
   const tabBarHeight = Platform.OS === "web" ? 84 : 56 + insets.bottom;
 
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [stats, setStats] = useState<LiveDashboardStats | null>(null);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -120,17 +94,8 @@ export default function ChatOpsScreen() {
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
   const initializedRef = useRef(false);
 
-  // Load key, incidents, stats — failures are best-effort (AI context only)
   useEffect(() => {
-    Promise.all([
-      getAnthropicKey(),
-      getIncidents().catch(() => [] as Incident[]),
-      getDashboardStats().catch(() => null),
-    ]).then(([key, inc, s]) => {
-      setApiKey(key);
-      setIncidents(inc);
-      setStats(s);
-    });
+    getIncidents().catch(() => [] as Incident[]).then(setIncidents);
   }, []);
 
   const contextIncident = useMemo(
@@ -138,64 +103,50 @@ export default function ChatOpsScreen() {
     [incidents, params.incident_id],
   );
 
-  // Initial greeting or auto-send for incident context
   useEffect(() => {
     if (initializedRef.current) return;
-    if (incidents.length === 0) return; // wait for incidents to load
     initializedRef.current = true;
 
-    if (contextIncident && apiKey) {
-      // Auto-send incident analysis
+    if (contextIncident) {
       const prompt = buildIncidentPrompt(contextIncident);
       const userMsg: Msg = { id: `u_init`, role: "user", text: prompt, ts: Date.now() };
       setMessages([userMsg]);
       historyRef.current = [{ role: "user", content: prompt }];
       sendReply(prompt);
     } else {
-      const greetText = contextIncident
-        ? `I am scoped to incident ${contextIncident.id} on ${contextIncident.host || "unknown"}. Ask me anything about its triggers, recent changes, or remediation steps.`
-        : "Hello. I am your Poulina AI operations assistant. Ask me about incidents, hosts, or infrastructure issues.";
-      const greet: Msg = { id: "m0", role: "agent", text: greetText, ts: Date.now() };
+      const greet: Msg = {
+        id: "m0",
+        role: "agent",
+        text: "Hello. I am your Poulina AI operations assistant — powered by a free built-in AI. No API key required. Ask me about incidents, hosts, or infrastructure issues.",
+        ts: Date.now(),
+      };
       setMessages([greet]);
     }
-  }, [incidents, contextIncident, apiKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sendReply = useCallback(async (userText: string) => {
-    const key = apiKey ?? await getAnthropicKey();
-    if (!key) {
+    setTyping(true);
+    const systemPrompt = buildSystemPrompt(incidents);
+
+    try {
+      const reply = await sendFreeAI(historyRef.current, systemPrompt);
+      historyRef.current = [...historyRef.current, { role: "assistant", content: reply }];
+      const agentMsg: Msg = { id: `a_${Date.now()}`, role: "agent", text: reply, ts: Date.now() };
+      setMessages((m) => [agentMsg, ...m]);
+    } catch {
       const errMsg: Msg = {
         id: `e_${Date.now()}`,
         role: "agent",
-        text: "No API key configured. Go to Settings → AI Configuration to add your Anthropic API key.",
+        text: "Could not reach AI. Check your internet connection and try again.",
         ts: Date.now(),
         error: true,
       };
       setMessages((m) => [errMsg, ...m]);
-      setTyping(false);
-      return;
-    }
-
-    setTyping(true);
-    const systemPrompt = buildSystemPrompt(stats, incidents);
-
-    try {
-      const reply = await sendClaude(key, historyRef.current, systemPrompt);
-      historyRef.current = [...historyRef.current, { role: "assistant", content: reply }];
-      const agentMsg: Msg = { id: `a_${Date.now()}`, role: "agent", text: reply, ts: Date.now() };
-      setMessages((m) => [agentMsg, ...m]);
-    } catch (e) {
-      const errText =
-        (e as Error).message === "INVALID_API_KEY"
-          ? "Invalid API key. Check your key in Settings → AI Configuration."
-          : (e as Error).message === "RATE_LIMIT"
-            ? "Rate limited. Please wait a moment and try again."
-            : "Could not reach AI. Check your connection and try again.";
-      const errMsg: Msg = { id: `e_${Date.now()}`, role: "agent", text: errText, ts: Date.now(), error: true };
-      setMessages((m) => [errMsg, ...m]);
     } finally {
       setTyping(false);
     }
-  }, [apiKey, stats, incidents]);
+  }, [incidents]);
 
   const send = useCallback(
     (raw?: string) => {
@@ -212,8 +163,6 @@ export default function ChatOpsScreen() {
 
   const newChat = useCallback(() => {
     historyRef.current = [];
-    initializedRef.current = false;
-    setMessages([]);
     const greet: Msg = {
       id: `m_${Date.now()}`,
       role: "agent",
@@ -221,7 +170,6 @@ export default function ChatOpsScreen() {
       ts: Date.now(),
     };
     setMessages([greet]);
-    initializedRef.current = true;
   }, []);
 
   const headerTopPad = isWeb ? 67 + 12 : insets.top + 8;
@@ -251,16 +199,14 @@ export default function ChatOpsScreen() {
           >
             <Feather name="plus" size={18} color={colors.mutedForeground} />
           </Pressable>
-          <View style={[styles.statusPill, { backgroundColor: apiKey ? `${colors.success}1A` : `${colors.mutedForeground}1A` }]}>
-            <View style={[styles.dot, { backgroundColor: apiKey ? colors.success : colors.mutedForeground }]} />
-            <Text style={{ color: apiKey ? colors.success : colors.mutedForeground, fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 0.4 }}>
-              {apiKey ? "AI READY" : "NO KEY"}
+          <View style={[styles.statusPill, { backgroundColor: `${colors.success}1A` }]}>
+            <View style={[styles.dot, { backgroundColor: colors.success }]} />
+            <Text style={{ color: colors.success, fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 0.4 }}>
+              AI READY
             </Text>
           </View>
         </View>
       </View>
-
-      {!apiKey ? <NoKeyBanner /> : null}
 
       <FlatList
         ref={listRef}
@@ -388,8 +334,6 @@ const styles = StyleSheet.create({
   statusPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  noKeyBanner: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
-  goBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   bubble: { maxWidth: "82%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, marginBottom: 8 },
   user: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
   agent: { alignSelf: "flex-start", borderBottomLeftRadius: 4, borderWidth: 1 },
