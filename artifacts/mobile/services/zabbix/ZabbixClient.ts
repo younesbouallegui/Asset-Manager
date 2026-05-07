@@ -214,7 +214,10 @@ class ZabbixClient {
     const apiToken = await this.getApiToken();
     if (!serverUrl) throw new Error("ZABBIX_NOT_CONFIGURED");
     if (!apiToken) throw new Error("API_TOKEN_MISSING");
-    const version = await rpc<string>(serverUrl, "apiinfo.version", {}, apiToken, true);
+    // apiinfo.version is a public method — must NOT send Authorization header
+    const version = await rpc<string>(serverUrl, "apiinfo.version", {}, null, false);
+    // Verify the bearer token actually works with a lightweight authenticated call
+    await rpc<ZabbixHost[]>(serverUrl, "host.get", { output: ["hostid"], limit: 1 }, apiToken, true);
     return version;
   }
 
