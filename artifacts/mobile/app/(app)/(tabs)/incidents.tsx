@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -20,12 +20,8 @@ import { Input } from "@/components/Input";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { SkeletonCard } from "@/components/Skeleton";
 import { useColors } from "@/hooks/useColors";
-import {
-  formatRelative,
-  getIncidents,
-  Incident,
-  Severity,
-} from "@/services/dataService";
+import { useZabbixPolling } from "@/hooks/useZabbixPolling";
+import { formatRelative, Severity } from "@/services/dataService";
 
 const FILTERS: ("ALL" | Severity)[] = [
   "ALL",
@@ -42,35 +38,50 @@ function useTabBarPad(): number {
   return (Platform.OS === "web" ? 84 : 56 + insets.bottom) + 16;
 }
 
+function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      onPress={onRetry}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginHorizontal: 20,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: `${colors.severityHigh}14`,
+        borderWidth: 1,
+        borderColor: colors.severityHigh,
+      }}
+    >
+      <Feather name="alert-circle" size={16} color={colors.severityHigh} />
+      <Text style={{ color: colors.severityHigh, fontFamily: "Inter_500Medium", fontSize: 13, flex: 1 }}>
+        {message}
+      </Text>
+      <Feather name="refresh-cw" size={14} color={colors.severityHigh} />
+    </Pressable>
+  );
+}
+
 export default function IncidentsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const tabPad = useTabBarPad();
 
-  const [data, setData] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"ALL" | Severity>("ALL");
 
-  const load = async () => {
-    const items = await getIncidents();
-    setData(items);
-    setLoading(false);
-  };
+  const { problems, loading, error, lastSync, refresh } = useZabbixPolling(60_000);
+  const refreshing = false;
 
-  useEffect(() => { load(); }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  };
+  const onRefresh = () => refresh();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return data.filter((i) => {
+    return problems.filter((i) => {
       if (filter !== "ALL" && i.severity !== filter) return false;
       if (!q) return true;
       return (
@@ -79,9 +90,10 @@ export default function IncidentsScreen() {
         i.id.toLowerCase().includes(q)
       );
     });
-  }, [data, query, filter]);
+  }, [problems, query, filter]);
 
   const headerTopPad = isWeb ? 67 + 12 : insets.top + 8;
+  const isFirstLoad = loading && !lastSync;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -135,7 +147,12 @@ export default function IncidentsScreen() {
           })}
         </ScrollView>
       </View>
-      {loading ? (
+
+      {error ? (
+        <ErrorBanner message={error} onRetry={refresh} />
+      ) : null}
+
+      {isFirstLoad ? (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: tabPad }}>
           <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
         </ScrollView>

@@ -79,10 +79,14 @@ export default function HostDetail() {
   const [host, setHost] = useState<Host | null>(null);
 
   useEffect(() => {
-    getHosts().then((items) => {
-      const found = items.find((h) => h.id === id) ?? items[0] ?? null;
-      setHost(found);
-    });
+    getHosts()
+      .then((items) => {
+        const found = items.find((h) => h.id === id) ?? null;
+        setHost(found);
+      })
+      .catch(() => {
+        setHost(null);
+      });
   }, [id]);
 
   const trends = useMemo(() => {

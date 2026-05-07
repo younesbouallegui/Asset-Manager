@@ -1,0 +1,58 @@
+The app is now successfully connected to the real Zabbix server at https://zabbix.younesblg.com using a Bearer API token.
+
+GOAL: Replace ALL demo/mock/hardcoded data in the app with real live data from Zabbix. Every screen that shows incidents, alerts, problems, hosts, triggers, or any monitoring data must fetch from the real Zabbix API using zabbixClient.
+
+CHANGES NEEDED:
+
+1. PROBLEMS / INCIDENTS SCREEN
+   - Remove any mock problems array or hardcoded data
+   - Call zabbixClient.getProblems() to fetch real active problems
+   - Show real fields: name, severity, clock (convert unix timestamp to readable time), acknowledged status
+   - Auto-refresh every 60 seconds using setInterval or a polling hook
+   - Show a loading spinner on first load
+   - Show an empty state if no problems exist ("No active problems")
+   - Severity colors must match Zabbix severity levels:
+     0 = gray (Not classified)
+     1 = blue (Information)
+     2 = yellow (Warning)
+     3 = orange (Average)
+     4 = red (High)
+     5 = dark red (Disaster)
+
+2. HOSTS SCREEN
+   - Remove any mock hosts array
+   - Call zabbixClient.getHosts() to fetch real hosts
+   - Show real fields: host name, availability (0=unknown, 1=available, 2=unavailable), status
+   - Show availability as a colored dot: green=available, red=unavailable, gray=unknown
+
+3. ALERTS / TRIGGERS SCREEN (if it exists)
+   - Remove mock data
+   - Use zabbixClient.getTriggers() or zabbixClient.getProblems() for real active alerts
+   - Show trigger name, priority, affected host name
+
+4. DASHBOARD / HOME SCREEN
+   - Replace any hardcoded summary numbers (total hosts, active problems, etc.) with real counts fetched from Zabbix
+   - Fetch problems count: zabbixClient.getProblems()
+   - Fetch hosts count: zabbixClient.getHosts()
+   - Show last sync time
+
+5. GLOBAL REAL-TIME POLLING
+   - Create a custom hook called useZabbixPolling(intervalMs = 60000) in hooks/useZabbixPolling.ts
+   - This hook should: fetch problems and hosts on mount, then repeat every intervalMs milliseconds, stop polling when the component unmounts (clearInterval on cleanup), expose: { problems, hosts, loading, error, lastSync, refresh }
+   - Use this hook in the main dashboard and problems screen
+
+6. ERROR HANDLING ON ALL SCREENS
+   - If zabbixClient throws, show a visible error banner: "Failed to load data — tap to retry"
+   - Tapping the banner calls the fetch function again
+
+7. REMOVE ALL DEMO DATA
+   - Search the entire codebase for: mock, demo, fake, hardcoded, placeholder, sampleData, dummyData, MOCK_, testData
+   - Delete or replace every occurrence with real zabbixClient calls
+   - The app must show a proper empty state when there is genuinely no data, not fake data
+
+8. DO NOT change:
+   - The Zabbix connection logic in ZabbixClient.ts (it works)
+   - The ZabbixConfigContext (it works)
+   - The connection settings screen (it works)
+
+After changes: run npx expo start --clear and verify each screen shows real data from Zabbix.

@@ -120,9 +120,13 @@ export default function ChatOpsScreen() {
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
   const initializedRef = useRef(false);
 
-  // Load key, incidents, stats
+  // Load key, incidents, stats — failures are best-effort (AI context only)
   useEffect(() => {
-    Promise.all([getAnthropicKey(), getIncidents(), getDashboardStats()]).then(([key, inc, s]) => {
+    Promise.all([
+      getAnthropicKey(),
+      getIncidents().catch(() => [] as Incident[]),
+      getDashboardStats().catch(() => null),
+    ]).then(([key, inc, s]) => {
       setApiKey(key);
       setIncidents(inc);
       setStats(s);

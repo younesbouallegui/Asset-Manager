@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -29,16 +29,8 @@ import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useZabbixConfig } from "@/contexts/ZabbixConfigContext";
 import { useColors } from "@/hooks/useColors";
-import {
-  formatRelative,
-  getDashboardStats,
-  getHosts,
-  getIncidents,
-  Host,
-  Incident,
-  LiveDashboardStats,
-  Severity,
-} from "@/services/dataService";
+import { useZabbixPolling } from "@/hooks/useZabbixPolling";
+import { formatRelative, Incident, LiveDashboardStats, Severity } from "@/services/dataService";
 
 type FeatherIcon = React.ComponentProps<typeof Feather>["name"];
 
@@ -139,9 +131,35 @@ function LiveIndicator({ live }: { live: boolean }) {
     <View style={styles.liveRow}>
       <Animated.View style={[styles.liveDot, { backgroundColor: color }, style]} />
       <Text style={{ color, fontFamily: "Inter_500Medium", fontSize: 11 }}>
-        {live ? "Live" : "Demo"}
+        {live ? "Live" : "Not connected"}
       </Text>
     </View>
+  );
+}
+
+function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      onPress={onRetry}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: `${colors.severityHigh}14`,
+        borderWidth: 1,
+        borderColor: colors.severityHigh,
+      }}
+    >
+      <Feather name="alert-circle" size={16} color={colors.severityHigh} />
+      <Text style={{ color: colors.severityHigh, fontFamily: "Inter_500Medium", fontSize: 13, flex: 1 }}>
+        {message}
+      </Text>
+      <Feather name="refresh-cw" size={14} color={colors.severityHigh} />
+    </Pressable>
   );
 }
 
@@ -196,48 +214,53 @@ export default function DashboardScreen() {
   const { session } = useAuth();
   const zabbix = useZabbixConfig();
 
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<LiveDashboardStats | null>(null);
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [hosts, setHosts] = useState<Host[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [newIncident, setNewIncident] = useState<Incident | null>(null);
 
+  const { problems, hosts, loading, error, lastSync, refresh } = useZabbixPolling(REFRESH_INTERVAL);
   const prevIncidentIds = useRef<Set<string>>(new Set());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const load = useCallback(async (silent = false) => {
-    try {
-      const [s, i, h] = await Promise.all([getDashboardStats(), getIncidents(), getHosts()]);
-
-      // Detect new incidents on refresh
-      if (silent && prevIncidentIds.current.size > 0) {
-        const incoming = i.filter((inc) => !prevIncidentIds.current.has(inc.id));
-        const urgent = incoming.find((inc) => inc.severity === "DISASTER" || inc.severity === "HIGH");
-        if (urgent) setNewIncident(urgent);
-        if (incoming.length > 0) setUnreadCount((c) => c + incoming.length);
-      }
-
-      prevIncidentIds.current = new Set(i.map((inc) => inc.id));
-      setStats(s);
-      setIncidents(i);
-      setHosts(h);
-      setLastUpdated(Date.now());
-      if (s.usingLiveData) zabbix.markSynced();
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [zabbix]);
 
   useEffect(() => {
-    load(false);
-    intervalRef.current = setInterval(() => load(true), REFRESH_INTERVAL);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [load]);
+    if (loading) return;
+    if (prevIncidentIds.current.size === 0) {
+      prevIncidentIds.current = new Set(problems.map((i) => i.id));
+      return;
+    }
+    const incoming = problems.filter((i) => !prevIncidentIds.current.has(i.id));
+    const urgent = incoming.find((i) => i.severity === "DISASTER" || i.severity === "HIGH");
+    if (urgent) setNewIncident(urgent);
+    if (incoming.length > 0) setUnreadCount((c) => c + incoming.length);
+    prevIncidentIds.current = new Set(problems.map((i) => i.id));
+  }, [problems, loading]);
 
-  const recentIncidents = incidents.filter((i) => i.status !== "resolved").slice(0, 3);
+  useEffect(() => {
+    if (lastSync) zabbix.markSynced();
+  }, [lastSync, zabbix]);
+
+  const stats = useMemo<LiveDashboardStats | null>(() => {
+    if (loading && !lastSync) return null;
+    const severityCounts: Record<Severity, number> = {
+      DISASTER: 0, HIGH: 0, AVERAGE: 0, WARNING: 0, INFO: 0, OK: 0,
+    };
+    problems.forEach((p) => {
+      severityCounts[p.severity] = (severityCounts[p.severity] ?? 0) + 1;
+    });
+    const hostsUp = hosts.filter((h) => h.status === "ok").length;
+    const totalHosts = hosts.length;
+    const activeIncidents = problems.filter((p) => p.status !== "resolved").length;
+    return {
+      activeIncidents,
+      hostsUp,
+      totalHosts,
+      avgResponse: "—",
+      uptime: totalHosts > 0 ? `${((hostsUp / totalHosts) * 100).toFixed(2)}%` : "—",
+      severityCounts,
+      usingLiveData: !error && lastSync !== null,
+    };
+  }, [problems, hosts, loading, lastSync, error]);
+
+  const recentIncidents = problems.filter((i) => i.status !== "resolved").slice(0, 3);
   const topHosts = [...hosts].sort((a, b) => b.cpu + b.memory - (a.cpu + a.memory)).slice(0, 3);
 
   const g = greeting(session?.displayName ?? "Operator");
@@ -298,16 +321,22 @@ export default function DashboardScreen() {
         <View style={{ height: 10 }} />
         <View style={styles.liveBar}>
           <LiveIndicator live={isLive} />
-          {lastUpdated ? (
+          {lastSync ? (
             <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>
-              Updated {formatRelative(lastUpdated)}
+              Updated {formatRelative(lastSync)}
             </Text>
           ) : null}
         </View>
 
+        {error ? (
+          <View style={{ marginTop: 12 }}>
+            <ErrorBanner message={error} onRetry={refresh} />
+          </View>
+        ) : null}
+
         <View style={{ height: 12 }} />
         <View style={styles.statsGrid}>
-          {loading ? (
+          {loading && !lastSync ? (
             <>
               <View style={styles.statCard}><Skeleton height={120} radius={16} /></View>
               <View style={styles.statCard}><Skeleton height={120} radius={16} /></View>
@@ -336,7 +365,7 @@ export default function DashboardScreen() {
         <SectionHeader title="Severity overview" />
         <Card>
           <View style={styles.severityRow}>
-            {loading
+            {loading && !lastSync
               ? [0, 1, 2, 3, 4, 5].map((k) => <Skeleton key={k} height={26} width={60} radius={8} />)
               : severities.map((s) => (
                   <View key={s.sev} style={styles.severityChip}>
@@ -352,7 +381,7 @@ export default function DashboardScreen() {
           actionLabel="View all"
           onActionPress={() => router.push("/(app)/(tabs)/incidents")}
         />
-        {loading ? (
+        {loading && !lastSync ? (
           <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
         ) : recentIncidents.length === 0 ? (
           <Card><EmptyState variant="incidents" /></Card>
@@ -387,7 +416,7 @@ export default function DashboardScreen() {
 
         <View style={{ height: 16 }} />
         <SectionHeader title="Top hosts at risk" />
-        {loading ? (
+        {loading && !lastSync ? (
           <><SkeletonCard /><SkeletonCard /></>
         ) : topHosts.length === 0 ? (
           <Card><EmptyState variant="hosts" /></Card>

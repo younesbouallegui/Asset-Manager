@@ -54,10 +54,14 @@ export default function IncidentDetail() {
   const [acknowledging, setAcknowledging] = useState(false);
 
   useEffect(() => {
-    getIncidents().then((items) => {
-      const found = items.find((i) => i.id === id) ?? items[0] ?? null;
-      setIncident(found);
-    });
+    getIncidents()
+      .then((items) => {
+        const found = items.find((i) => i.id === id) ?? null;
+        setIncident(found);
+      })
+      .catch(() => {
+        setIncident(null);
+      });
   }, [id]);
 
   const handleAcknowledge = async () => {
