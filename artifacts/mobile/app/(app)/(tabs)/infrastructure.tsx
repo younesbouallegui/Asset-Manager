@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/Input";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { SkeletonCard } from "@/components/Skeleton";
+import { useZabbixConfig } from "@/contexts/ZabbixConfigContext";
 import { useColors } from "@/hooks/useColors";
 import {
   getHostGroups,
@@ -207,6 +208,7 @@ export default function InfrastructureScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const tabPad = useTabBarPad();
+  const { isReady, status } = useZabbixConfig();
 
   const [mode, setMode] = useState<Mode>("hosts");
   const [query, setQuery] = useState("");
@@ -218,22 +220,42 @@ export default function InfrastructureScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    console.log("[Infrastructure] load() — isReady:", isReady, "status:", status);
     setError(null);
     try {
       const [h, g, t] = await Promise.all([getHosts(), getHostGroups(), getTemplates()]);
+      console.log("[Infrastructure] result — hosts:", h.length, "groups:", g.length);
       setHosts(h);
       setGroups(g);
       setTemplates(t);
     } catch (e) {
-      setError(friendlyError((e as Error).message ?? "Unknown error"));
+      const msg = (e as Error).message ?? "Unknown error";
+      console.log("[Infrastructure] error:", msg);
+      setError(friendlyError(msg));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isReady, status]);
 
+  // Wait for isReady before first load — fixes the AsyncStorage race condition
   useEffect(() => {
+    if (!isReady) {
+      console.log("[Infrastructure] waiting for isReady...");
+      return;
+    }
     load();
-  }, [load]);
+  }, [isReady, load]);
+
+  // Re-fetch when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[Infrastructure] focused — isReady:", isReady);
+      if (isReady) {
+        setLoading(true);
+        load();
+      }
+    }, [isReady, load]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

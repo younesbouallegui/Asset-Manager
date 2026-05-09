@@ -1,0 +1,58 @@
+The Zabbix connection works fine (settings screen shows "Connected") but the Dashboard shows "Not Connected" and the Incidents screen is empty. Find and fix all the root causes.
+
+INVESTIGATION — search the entire codebase for these issues:
+
+1. CONNECTION STATUS NOT SHARED CORRECTLY
+   - Find every screen/component that checks Zabbix connection status
+   - Make sure they ALL use useZabbixConfig() from ZabbixConfigContext, not a local state or a separate check
+   - The dashboard must read status directly from ZabbixConfigContext: const { status, isReady } = useZabbixConfig()
+   - If status !== "connected", show a "Not connected — go to Settings" banner, but still attempt to load data anyway
+   - Never block data fetching just because status is "disconnected" — try the API call regardless and let the error speak for itself
+
+2. DATA NOT LOADING ON SCREEN MOUNT
+   - Find every screen that should show Zabbix data (Dashboard, Incidents, Hosts, Alerts, etc.)
+   - Make sure each one calls the zabbixClient methods inside a useEffect on mount
+   - The useEffect must NOT have an empty dependency array that skips re-runs after connection — use [isReady] or [status] as dependency so it retries when connection is established
+   - Example pattern to use in every data screen:
+     useEffect(() => {
+       if (!isReady) return;
+       fetchData();
+     }, [isReady]);
+
+3. ASYNC STORAGE TIMING BUG
+   - The ZabbixClient reads serverUrl and apiToken from AsyncStorage on every call
+   - There is a race condition: screens mount and call zabbixClient before AsyncStorage has loaded the values
+   - Fix: in every screen that fetches data, wait for isReady === true (from useZabbixConfig) before making any zabbixClient call
+   - isReady is set to true in ZabbixConfigContext only after AsyncStorage has finished loading
+
+4. INCIDENTS SCREEN EMPTY
+   - Find the incidents/problems screen
+   - Make sure it calls zabbixClient.getProblems() on mount and when the screen comes into focus (use useFocusEffect from @react-navigation/native)
+   - Remove any condition that prevents the call (like: if status !== "connected" return)
+   - Add console.log before and after the getProblems() call so we can see if it runs and what it returns
+
+5. DASHBOARD "NOT CONNECTED" LABEL
+   - Find where the dashboard reads connection status
+   - Replace any local connection check with: const { status } = useZabbixConfig()
+   - Show "Not connected" only if status === "not_configured", not if status === "disconnected"
+   - If status === "connected" or a data fetch succeeded, show the real data
+
+6. ADD CONSOLE LOGS FOR DEBUGGING
+   - In every screen that fetches Zabbix data, add:
+     console.log("[Screen] fetching data, isReady:", isReady, "status:", status)
+     console.log("[Screen] result:", result)
+     console.log("[Screen] error:", error)
+   - This will show in the Expo terminal what is actually happening
+
+7. AUTO-RETRY ON FOCUS
+   - Wrap every screen's data fetch in useFocusEffect so it re-fetches when the user navigates to that screen
+   - Import: import { useFocusEffect } from "@react-navigation/native"
+   - Pattern:
+     useFocusEffect(useCallback(() => { fetchData(); }, [isReady]))
+
+Do NOT change:
+- ZabbixClient.ts (connection logic works)
+- ZabbixConfigContext.tsx (context works)
+- ZabbixConnectionScreen (settings screen works)
+
+After fixing, run: npx expo start --clear

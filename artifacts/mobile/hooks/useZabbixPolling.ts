@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useZabbixConfig } from "@/contexts/ZabbixConfigContext";
 import { getHosts, getIncidents, Host, Incident } from "@/services/dataService";
 
 export interface ZabbixPollingResult {
@@ -24,6 +25,8 @@ function friendlyError(msg: string): string {
 }
 
 export function useZabbixPolling(intervalMs = 60_000): ZabbixPollingResult {
+  const { isReady, status } = useZabbixConfig();
+
   const [problems, setProblems] = useState<Incident[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,22 +36,26 @@ export function useZabbixPolling(intervalMs = 60_000): ZabbixPollingResult {
   const mountedRef = useRef(true);
 
   const doFetch = useCallback(async (silent = false) => {
+    console.log("[ZabbixPolling] fetching — isReady:", isReady, "status:", status);
     if (!silent) setLoading(true);
     setError(null);
     try {
       const [p, h] = await Promise.all([getIncidents(), getHosts()]);
       if (!mountedRef.current) return;
+      console.log("[ZabbixPolling] result — problems:", p.length, "hosts:", h.length);
       setProblems(p);
       setHosts(h);
       setLastSync(Date.now());
     } catch (e) {
       if (!mountedRef.current) return;
-      setError(friendlyError((e as Error).message ?? "Unknown error"));
+      const msg = (e as Error).message ?? "Unknown error";
+      console.log("[ZabbixPolling] error:", msg);
+      setError(friendlyError(msg));
     } finally {
       if (!mountedRef.current) return;
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [isReady, status]);
 
   const refresh = useCallback(() => {
     doFetch(false);
@@ -56,13 +63,23 @@ export function useZabbixPolling(intervalMs = 60_000): ZabbixPollingResult {
 
   useEffect(() => {
     mountedRef.current = true;
+
+    if (!isReady) {
+      console.log("[ZabbixPolling] waiting for isReady...");
+      return () => {
+        mountedRef.current = false;
+      };
+    }
+
+    console.log("[ZabbixPolling] isReady=true — starting fetch & poll interval");
     doFetch(false);
     intervalRef.current = setInterval(() => doFetch(true), intervalMs);
+
     return () => {
       mountedRef.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [doFetch, intervalMs]);
+  }, [isReady, doFetch, intervalMs]);
 
   return { problems, hosts, loading, error, lastSync, refresh };
 }

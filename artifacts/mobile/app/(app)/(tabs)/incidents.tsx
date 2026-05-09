@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/Input";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { SkeletonCard } from "@/components/Skeleton";
+import { useZabbixConfig } from "@/contexts/ZabbixConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { useZabbixPolling } from "@/hooks/useZabbixPolling";
 import { formatRelative, Severity } from "@/services/dataService";
@@ -70,14 +71,25 @@ export default function IncidentsScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const tabPad = useTabBarPad();
+  const zabbix = useZabbixConfig();
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"ALL" | Severity>("ALL");
 
   const { problems, loading, error, lastSync, refresh } = useZabbixPolling(60_000);
-  const refreshing = false;
 
-  const onRefresh = () => refresh();
+  // Re-fetch when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[Incidents] focused — isReady:", zabbix.isReady, "status:", zabbix.status);
+      if (zabbix.isReady) refresh();
+    }, [zabbix.isReady, refresh]),
+  );
+
+  const onRefresh = () => {
+    console.log("[Incidents] manual refresh");
+    refresh();
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -161,7 +173,7 @@ export default function IncidentsScreen() {
           data={filtered}
           keyExtractor={(i) => i.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: tabPad, flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={loading && !!lastSync} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <Card style={{ marginTop: 8 }}>
               <EmptyState variant="incidents" />

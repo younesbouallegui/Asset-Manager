@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -108,12 +108,12 @@ function MiniBars({ values }: { values: number[] }) {
   );
 }
 
-function LiveIndicator({ live }: { live: boolean }) {
+function LiveIndicator({ live, connecting }: { live: boolean; connecting?: boolean }) {
   const colors = useColors();
   const opacity = useSharedValue(1);
 
   useEffect(() => {
-    if (live) {
+    if (live || connecting) {
       opacity.value = withRepeat(
         withSequence(withTiming(0.3, { duration: 700 }), withTiming(1, { duration: 700 })),
         -1,
@@ -122,16 +122,17 @@ function LiveIndicator({ live }: { live: boolean }) {
     } else {
       opacity.value = 1;
     }
-  }, [live, opacity]);
+  }, [live, connecting, opacity]);
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  const color = live ? colors.success : colors.mutedForeground;
+  const color = live ? colors.success : connecting ? colors.severityAverage : colors.mutedForeground;
+  const label = live ? "Live" : connecting ? "Connecting…" : "Not connected";
 
   return (
     <View style={styles.liveRow}>
       <Animated.View style={[styles.liveDot, { backgroundColor: color }, style]} />
       <Text style={{ color, fontFamily: "Inter_500Medium", fontSize: 11 }}>
-        {live ? "Live" : "Not connected"}
+        {label}
       </Text>
     </View>
   );
@@ -159,6 +160,32 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
         {message}
       </Text>
       <Feather name="refresh-cw" size={14} color={colors.severityHigh} />
+    </Pressable>
+  );
+}
+
+function NotConfiguredBanner() {
+  const colors = useColors();
+  return (
+    <Pressable
+      onPress={() => router.push("/(app)/settings/zabbix")}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: `${colors.severityAverage}14`,
+        borderWidth: 1,
+        borderColor: colors.severityAverage,
+      }}
+    >
+      <Feather name="link" size={16} color={colors.severityAverage} />
+      <Text style={{ color: colors.severityAverage, fontFamily: "Inter_500Medium", fontSize: 13, flex: 1 }}>
+        Zabbix not configured — tap to set up connection
+      </Text>
+      <Feather name="chevron-right" size={14} color={colors.severityAverage} />
     </Pressable>
   );
 }
@@ -221,6 +248,14 @@ export default function DashboardScreen() {
   const { problems, hosts, loading, error, lastSync, refresh } = useZabbixPolling(REFRESH_INTERVAL);
   const prevIncidentIds = useRef<Set<string>>(new Set());
 
+  // Re-fetch when dashboard comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[Dashboard] focused — isReady:", zabbix.isReady, "status:", zabbix.status);
+      if (zabbix.isReady) refresh();
+    }, [zabbix.isReady, refresh]),
+  );
+
   useEffect(() => {
     if (loading) return;
     if (prevIncidentIds.current.size === 0) {
@@ -265,7 +300,11 @@ export default function DashboardScreen() {
 
   const g = greeting(session?.displayName ?? "Operator");
   const headerTopPad = isWeb ? 67 + 12 : insets.top + 8;
-  const isLive = stats?.usingLiveData ?? false;
+
+  // isLive: true if we got data successfully, or if context confirms connected
+  const isLive = zabbix.status === "connected" || (lastSync !== null && !error);
+  // connecting: isReady=true and still loading first batch
+  const isConnecting = zabbix.isReady && loading && !lastSync && !error;
 
   const severities: { sev: Severity; count: number }[] = stats
     ? [
@@ -320,7 +359,7 @@ export default function DashboardScreen() {
 
         <View style={{ height: 10 }} />
         <View style={styles.liveBar}>
-          <LiveIndicator live={isLive} />
+          <LiveIndicator live={isLive} connecting={isConnecting} />
           {lastSync ? (
             <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>
               Updated {formatRelative(lastSync)}
@@ -328,7 +367,11 @@ export default function DashboardScreen() {
           ) : null}
         </View>
 
-        {error ? (
+        {zabbix.isReady && zabbix.status === "not_configured" ? (
+          <View style={{ marginTop: 12 }}>
+            <NotConfiguredBanner />
+          </View>
+        ) : error ? (
           <View style={{ marginTop: 12 }}>
             <ErrorBanner message={error} onRetry={refresh} />
           </View>
