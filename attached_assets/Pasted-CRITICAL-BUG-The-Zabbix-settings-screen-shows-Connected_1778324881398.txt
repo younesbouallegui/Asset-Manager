@@ -1,0 +1,84 @@
+CRITICAL BUG: The Zabbix settings screen shows "Connected — Zabbix v7.4.8" successfully, but the Dashboard and Incidents screen both show "Failed to load data". The real Zabbix server has active problems (Disk full, Zabbix agent not available) that must appear in the app.
+
+The testConnection() works because it calls apiinfo.version which requires NO special permissions. But getProblems(), getHosts() etc. are failing — this means the API token has permission issues OR the method params are wrong for Zabbix 7.4.8.
+
+FIND AND FIX THE FOLLOWING:
+
+1. DEBUG: Add detailed error logging to every zabbixClient call in Dashboard and Incidents screens:
+   try {
+     const problems = await zabbixClient.getProblems();
+     console.log("[DEBUG] problems:", JSON.stringify(problems));
+   } catch(e) {
+     console.error("[DEBUG] getProblems error:", e.message, e.code);
+   }
+   Do the same for getHosts(). Run the app and check what error appears in the terminal.
+
+2. FIX getProblems() params for Zabbix 7.x:
+   In ZabbixClient.ts, update getProblems() to use these exact params:
+   {
+     output: ["eventid", "objectid", "severity", "clock", "name", "acknowledged"],
+     selectAcknowledges: "extend",
+     selectTags: "extend",
+     source: 0,
+     object: 0,
+     value: 1,
+     sortfield: ["severity", "clock"],
+     sortorder: ["DESC", "DESC"],
+     limit: 100
+   }
+   The key addition is: source: 0, object: 0, value: 1
+   These are required in Zabbix 7.x to return only active trigger-based problems.
+
+3. FIX getHosts() params:
+   Update getHosts() to remove the filter on status (some Zabbix 7.x setups ignore it differently):
+   {
+     output: ["hostid", "host", "name", "available", "status"],
+     selectInterfaces: ["ip", "type", "main"],
+     selectGroups: ["groupid", "name"],
+     limit: 200
+   }
+   Remove: filter: { status: 0 }
+
+4. FIX the rpc() function — expose the full Zabbix error:
+   When json.error exists, log the full error object to console:
+   console.error("[ZabbixRPC] API error:", JSON.stringify(json.error));
+   Then throw with full details:
+   throw Object.assign(new Error(json.error.data ?? json.error.message ?? "Zabbix error"), { code: json.error.code });
+
+5. FIX Dashboard screen:
+   The dashboard must call zabbixClient.getProblems() and zabbixClient.getHosts() independently.
+   If getProblems() returns an array (even empty), show count = array.length, do NOT show "Failed to load data".
+   Only show "Failed to load data" if the call throws an exception.
+   Show the real counts:
+   - Active incidents = problems.filter(p => p.acknowledged === "0").length or problems.length
+   - Hosts up = hosts.filter(h => h.available === "1").length + "/" + hosts.length
+   - Severity overview: count problems by severity field (0-5)
+   - Recent incidents: show first 5 problems from getProblems()
+
+6. FIX Incidents screen:
+   Same fix — call getProblems() and show results directly.
+   Map each problem to a card showing:
+   - name (problem name)
+   - severity → colored badge (0=gray, 1=blue, 2=yellow, 3=orange, 4=red, 5=darkred)
+   - clock → human readable time (new Date(parseInt(p.clock) * 1000).toLocaleString())
+   - acknowledged → show "ACK" badge if acknowledged === "1"
+
+7. FIX Infra/Hosts screen:
+   It already shows hosts (macBook-Air-moetaz, Zabbix server) which means getHosts() works.
+   Use the SAME working call pattern from the Infra screen in Dashboard and Incidents screens.
+   Check how InfraScreen.tsx fetches hosts and copy that exact pattern.
+
+8. IMPORTANT — check the Infra screen code:
+   Since Infra screen already loads hosts successfully, find what is different about how it calls zabbixClient vs how Dashboard calls it. The difference is the bug. Fix Dashboard and Incidents to match the working pattern from Infra screen.
+
+Known real data in Zabbix that must appear:
+- Problem 1: "Disk full" on macBook-Air-moetaz, severity=4 (High), since 2026-04-27
+- Problem 2: "Linux: Zabbix agent is not available (for 3m)" on Zabbix server, severity=3 (Average), since 2026-04-07
+- Hosts: macBook-Air-moetaz, Zabbix server
+
+Do NOT change:
+- ZabbixConfigContext.tsx
+- ZabbixConnectionScreen
+- The working Infra/Hosts screen
+
+After fixing: npx expo start --clear

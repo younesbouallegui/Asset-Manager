@@ -152,6 +152,7 @@ async function rpc<T>(
   const json = (await res.json()) as { result?: T; error?: { code: number; data?: string; message?: string } };
 
   if (json.error) {
+    console.error("[ZabbixRPC] API error:", JSON.stringify(json.error), "method:", method);
     const e = new Error(json.error.data ?? json.error.message ?? "Zabbix error") as Error & { code: number };
     e.code = json.error.code;
     throw e;
@@ -225,6 +226,10 @@ class ZabbixClient {
     return this.call("problem.get", {
       output: ["eventid", "objectid", "severity", "clock", "name", "acknowledged"],
       selectAcknowledges: "extend",
+      selectTags: "extend",
+      source: 0,
+      object: 0,
+      value: 1,
       sortfield: ["severity", "clock"],
       sortorder: ["DESC", "DESC"],
       limit: 100,
@@ -237,7 +242,6 @@ class ZabbixClient {
       output: ["hostid", "host", "name", "available", "status"],
       selectInterfaces: ["ip", "type", "main"],
       selectGroups: ["groupid", "name"],
-      filter: { status: 0 },
       ...(extra ?? {}),
     });
   }

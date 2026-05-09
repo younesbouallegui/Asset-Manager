@@ -83,7 +83,9 @@ async function assertConfigured(): Promise<void> {
 
 export async function getIncidents(): Promise<Incident[]> {
   await assertConfigured();
-  const problems = await zabbixClient.getProblems({ recent: true });
+  console.log("[dataService] getIncidents: calling problem.get");
+  const problems = await zabbixClient.getProblems();
+  console.log("[dataService] getIncidents: got", problems.length, "problems:", JSON.stringify(problems.slice(0, 2)));
   const incidents = adaptProblems(problems);
 
   const triggerIds = [...new Set(incidents.map((i) => i.hostId))];
@@ -104,8 +106,8 @@ export async function getIncidents(): Promise<Incident[]> {
           }
         }
       });
-    } catch {
-      // enrichment is best-effort
+    } catch (e) {
+      console.warn("[dataService] trigger enrichment failed:", (e as Error).message);
     }
   }
   return incidents;
@@ -124,7 +126,9 @@ export async function acknowledgeIncident(eventId: string): Promise<void> {
 
 export async function getHosts(): Promise<Host[]> {
   await assertConfigured();
+  console.log("[dataService] getHosts: calling host.get");
   const zbxHosts = await zabbixClient.getHosts();
+  console.log("[dataService] getHosts: got", zbxHosts.length, "hosts");
   return zbxHosts.map(
     (h): Host => ({
       id: h.hostid,
