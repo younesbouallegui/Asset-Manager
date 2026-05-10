@@ -229,7 +229,6 @@ class ZabbixClient {
       selectTags: "extend",
       source: 0,
       object: 0,
-      value: 1,
       sortfield: ["severity", "clock"],
       sortorder: ["DESC", "DESC"],
       limit: 100,
