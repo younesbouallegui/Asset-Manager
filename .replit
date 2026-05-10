@@ -24,6 +24,10 @@ args = "Start Backend"
 task = "workflow.run"
 args = "Start Frontend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Preview Proxy"
+
 [[workflows.workflow]]
 name = "Start Backend"
 author = "agent"
@@ -47,6 +51,18 @@ outputType = "console"
 task = "shell.exec"
 args = "PORT=8081 pnpm --filter @workspace/mobile run dev"
 
+[[workflows.workflow]]
+name = "Start Preview Proxy"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=5000 node scripts/expo-proxy.mjs"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
@@ -58,15 +74,10 @@ timeoutMs = 20000
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
+externalPort = 80
 
 [[ports]]
 localPort = 8081
-externalPort = 8081
 
 [[ports]]
 localPort = 8082
