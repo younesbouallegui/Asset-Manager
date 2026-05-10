@@ -227,8 +227,6 @@ class ZabbixClient {
       output: ["eventid", "objectid", "severity", "clock", "name", "acknowledged"],
       selectAcknowledges: "extend",
       selectTags: "extend",
-      source: 0,
-      object: 0,
       sortfield: ["severity", "clock"],
       sortorder: ["DESC", "DESC"],
       limit: 100,
