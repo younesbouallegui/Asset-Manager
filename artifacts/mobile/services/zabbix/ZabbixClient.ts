@@ -244,11 +244,12 @@ class ZabbixClient {
   }
 
   async getTriggers(triggerids: string[]): Promise<ZabbixTrigger[]> {
+    const ids = triggerids.filter((id) => id && id !== "0");
+    if (ids.length === 0) return [];
     return this.call("trigger.get", {
       output: ["triggerid", "description", "priority"],
-      selectHosts: ["hostid", "host", "name", "interfaces"],
-      selectItems: ["itemid", "name", "lastvalue", "units"],
-      triggerids,
+      selectHosts: ["hostid", "host", "name"],
+      triggerids: ids,
     });
   }
 
