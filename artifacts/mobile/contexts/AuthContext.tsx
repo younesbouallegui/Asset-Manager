@@ -32,24 +32,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [needsReauth, setNeedsReauth] = useState(false);
 
   const bootstrap = useCallback(async (): Promise<boolean> => {
-    const stored = await authService.getSession();
-    const valid = authService.validateSession(stored);
-    if (valid && stored) {
-      setSession(stored);
+    try {
+      const stored = await authService.getSession();
+      const valid = authService.validateSession(stored);
+      if (valid && stored) {
+        setSession(stored);
+        setReady(true);
+        return true;
+      }
+      if (stored && !valid) {
+        // Expired — clear and prompt re-auth on next guarded entry.
+        try { await authService.logout(); } catch { /* best-effort */ }
+      }
+      setSession(null);
       setReady(true);
-      return true;
+      return false;
+    } catch {
+      // Storage unavailable or parse error — treat as unauthenticated.
+      setSession(null);
+      setReady(true);
+      return false;
     }
-    if (stored && !valid) {
-      // Expired — clear and prompt re-auth on next guarded entry.
-      await authService.logout();
-    }
-    setSession(null);
-    setReady(true);
-    return false;
   }, []);
 
   useEffect(() => {
-    bootstrap();
+    // Safety net: if bootstrap hangs (e.g. AsyncStorage timeout), unblock after 5 s.
+    const fallback = setTimeout(() => setReady((prev) => { if (!prev) return true; return prev; }), 5000);
+    bootstrap().finally(() => clearTimeout(fallback));
   }, [bootstrap]);
 
   const login = useCallback(

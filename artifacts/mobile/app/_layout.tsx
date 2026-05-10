@@ -61,7 +61,7 @@ export default function RootLayout() {
   const [configReady, setConfigReady] = useState(false);
 
   useEffect(() => {
-    autoConfigPromise.then(() => setConfigReady(true));
+    autoConfigPromise.then(() => setConfigReady(true)).catch(() => setConfigReady(true));
   }, []);
 
   useEffect(() => {
