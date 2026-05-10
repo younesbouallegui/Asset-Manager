@@ -1,41 +1,51 @@
 import http from "node:http";
 import net from "node:net";
 
-const TARGET_PORT = 8081;
+const API_PORT = 8080;
+const EXPO_PORT = 8081;
 const PROXY_PORT = parseInt(process.env.PORT || "5000", 10);
 
-const server = http.createServer((req, res) => {
-  const options = {
-    hostname: "localhost",
-    port: TARGET_PORT,
-    path: req.url,
-    method: req.method,
-    headers: {
-      ...req.headers,
-      host: `localhost:${TARGET_PORT}`,
-    },
-  };
+function targetPort(url) {
+  return url.startsWith("/api/") || url === "/api" ? API_PORT : EXPO_PORT;
+}
 
-  const proxy = http.request(options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
-    proxyRes.pipe(res, { end: true });
-  });
+const server = http.createServer((req, res) => {
+  const port = targetPort(req.url ?? "/");
+
+  const proxy = http.request(
+    {
+      hostname: "localhost",
+      port,
+      path: req.url,
+      method: req.method,
+      headers: { ...req.headers, host: `localhost:${port}` },
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    },
+  );
 
   proxy.on("error", () => {
     if (!res.headersSent) {
       res.writeHead(502);
-      res.end("Expo Metro not ready yet — please wait a moment and refresh.");
+      res.end(
+        port === API_PORT
+          ? "API server not ready — please wait a moment."
+          : "Expo Metro not ready — please wait a moment and refresh.",
+      );
     }
   });
 
   req.pipe(proxy, { end: true });
 });
 
-// Forward WebSocket upgrades (needed for Expo HMR / live-reload)
+// WebSocket upgrades — only needed for Expo HMR (port 8081)
 server.on("upgrade", (req, clientSocket, head) => {
-  const targetSocket = net.connect(TARGET_PORT, "localhost", () => {
+  const port = targetPort(req.url ?? "/");
+  const targetSocket = net.connect(port, "localhost", () => {
     const reqLine = `${req.method} ${req.url} HTTP/1.1\r\n`;
-    const headers = Object.entries({ ...req.headers, host: `localhost:${TARGET_PORT}` })
+    const headers = Object.entries({ ...req.headers, host: `localhost:${port}` })
       .map(([k, v]) => `${k}: ${v}`)
       .join("\r\n");
     targetSocket.write(`${reqLine}${headers}\r\n\r\n`);
@@ -49,5 +59,7 @@ server.on("upgrade", (req, clientSocket, head) => {
 });
 
 server.listen(PROXY_PORT, "0.0.0.0", () => {
-  console.log(`Expo proxy: localhost:${PROXY_PORT} → localhost:${TARGET_PORT} (HTTP + WS)`);
+  console.log(
+    `Expo proxy: localhost:${PROXY_PORT} → /api/* → :${API_PORT}, /* → :${EXPO_PORT} (HTTP + WS)`,
+  );
 });
