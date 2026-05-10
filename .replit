@@ -33,8 +33,9 @@ waitForPort = 8080
 outputType = "console"
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
+integrations = ["javascript_openrouter_ai_integrations:2.0.0"]
 
 [postMerge]
 path = "scripts/post-merge.sh"
@@ -65,3 +66,6 @@ externalPort = 3000
 [userenv.shared]
 EXPO_PUBLIC_ZABBIX_URL = "https://zabbix.younesblg.com"
 EXPO_PUBLIC_ZABBIX_TOKEN = "9853f91426bdc5f49a0e37d463e5e493859615bbf43b8a4381d6ad608a9a0e12"
+
+[nix]
+channel = "stable-25_05"

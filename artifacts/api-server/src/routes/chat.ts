@@ -36,7 +36,7 @@ router.post("/chat", async (req, res) => {
         "X-Title": "Poulina AI OpsHub",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.1-8b-instruct:free",
+        model: "meta-llama/llama-3.3-70b-instruct:free",
         max_tokens: 8192,
         messages: chatMessages,
       }),
