@@ -64,7 +64,6 @@ export interface ZabbixUser {
   name: string;
   surname: string;
   roleid: string;
-  type: "1" | "2" | "3";
 }
 
 export interface ZabbixHistoryEntry {
@@ -275,7 +274,7 @@ class ZabbixClient {
 
   async getUsers(): Promise<ZabbixUser[]> {
     return this.call("user.get", {
-      output: ["userid", "username", "name", "surname", "roleid", "type"],
+      output: ["userid", "username", "name", "surname", "roleid"],
       selectRole: ["roleid", "name"],
     });
   }

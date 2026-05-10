@@ -96,7 +96,7 @@ export class ZabbixAuthService implements AuthService {
       const profile = await zabbixClient.getUserProfile(serverUrl.trim(), username.trim(), sessionToken);
       const name = `${profile.name ?? ""} ${profile.surname ?? ""}`.trim();
       if (name) displayName = name;
-      role = profile.type === "3" ? "Admin" : profile.type === "2" ? "DevOps" : "Operator";
+      role = profile.roleid === "3" ? "Admin" : profile.roleid === "2" ? "DevOps" : "Operator";
     } catch {
       // profile fetch best-effort — carry on with defaults
     }

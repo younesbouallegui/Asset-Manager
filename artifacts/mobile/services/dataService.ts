@@ -184,7 +184,7 @@ export async function getManagedUsers(): Promise<ManagedUser[]> {
       name: `${u.name} ${u.surname}`.trim() || u.username,
       email: `${u.username}@zabbix`,
       role:
-        u.type === "3" ? "Admin" : u.type === "2" ? "DevOps" : "Operator",
+        u.roleid === "3" ? "Admin" : u.roleid === "2" ? "DevOps" : "Operator",
       active: true,
     }),
   );
