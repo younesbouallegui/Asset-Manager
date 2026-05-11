@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Poulina AI OpsHub",
-    "slug": "mobile",
+    "slug": "poulina-ops-hub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/poulina-logo.png",
-    "scheme": "mobile",
+    "scheme": "poulina-ops",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {

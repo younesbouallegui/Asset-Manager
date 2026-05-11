@@ -12,7 +12,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { Skeleton } from "@/components/Skeleton";
-import { SeverityBadge } from "@/components/SeverityBadge";
 import { useColors } from "@/hooks/useColors";
 import {
   getReport,
@@ -20,31 +19,17 @@ import {
   ReportSeries,
 } from "@/services/dataService";
 
-function StatLine({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StatLine({ label, value }: { label: string; value: string }) {
   const colors = useColors();
   return (
     <View style={styles.statLine}>
       <Text
-        style={{
-          color: colors.mutedForeground,
-          fontFamily: "Inter_500Medium",
-          fontSize: 13,
-        }}
+        style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 13 }}
       >
         {label}
       </Text>
       <Text
-        style={{
-          color: colors.onSurface,
-          fontFamily: "Inter_700Bold",
-          fontSize: 18,
-        }}
+        style={{ color: colors.onSurface, fontFamily: "Inter_700Bold", fontSize: 18 }}
       >
         {value}
       </Text>
@@ -52,41 +37,43 @@ function StatLine({
   );
 }
 
-function HourlyBars({ data }: { data: number[] }) {
+function TrendBars({ labels, values, color }: { labels: string[]; values: number[]; color: string }) {
   const colors = useColors();
-  const max = Math.max(...data, 1);
-  return (
-    <View style={styles.bars}>
-      {data.map((v, i) => (
-        <View key={i} style={styles.barCol}>
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "flex-end",
-            }}
-          >
-            <View
-              style={{
-                width: "100%",
-                height: `${(v / max) * 100}%`,
-                backgroundColor: colors.primary,
-                opacity: 0.55 + (v / max) * 0.45,
-                borderRadius: 3,
-              }}
-            />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
+  const max = Math.max(...values, 1);
+  const step = Math.max(1, Math.floor(labels.length / 5));
+  const axisTicks = labels.filter((_, i) => i % step === 0 || i === labels.length - 1);
 
-function generateHourly(seed: number): number[] {
-  return Array.from({ length: 24 }).map((_, i) => {
-    const wave = Math.sin((i / 24) * Math.PI * 2 - 1) * 6 + 8;
-    const noise = ((i + 1) * (seed % 7) + 3) % 7;
-    return Math.max(1, Math.round(wave + noise));
-  });
+  return (
+    <>
+      <View style={styles.bars}>
+        {values.map((v, i) => (
+          <View key={i} style={styles.barCol}>
+            <View style={{ flex: 1, justifyContent: "flex-end" }}>
+              <View
+                style={{
+                  width: "100%",
+                  height: `${Math.max(4, (v / max) * 100)}%`,
+                  backgroundColor: color,
+                  opacity: 0.45 + (v / max) * 0.55,
+                  borderRadius: 3,
+                }}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+      <View style={styles.axisRow}>
+        {axisTicks.map((l, i) => (
+          <Text
+            key={i}
+            style={[styles.axis, { color: colors.mutedForeground }]}
+          >
+            {l}
+          </Text>
+        ))}
+      </View>
+    </>
+  );
 }
 
 export default function ReportsScreen() {
@@ -104,15 +91,22 @@ export default function ReportsScreen() {
     });
   }, [range]);
 
-  const hourly = useMemo(
-    () => (report ? generateHourly(report.totalIncidents) : []),
-    [report],
-  );
+  const kpis = useMemo(() => {
+    if (!report) return null;
+    const totalIncidents = report.incidents.reduce((a, b) => a + b, 0);
+    const avgAvailability =
+      report.availability.reduce((a, b) => a + b, 0) / Math.max(1, report.availability.length);
+    const avgMttr =
+      report.mttr.reduce((a, b) => a + b, 0) / Math.max(1, report.mttr.length);
+    const minAvail = Math.min(...report.availability);
+    return { totalIncidents, avgAvailability, avgMttr, minAvail };
+  }, [report]);
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+      showsVerticalScrollIndicator={false}
     >
       <Text
         style={{
@@ -124,144 +118,138 @@ export default function ReportsScreen() {
       >
         Performance overview
       </Text>
+
       <SegmentedControl<ReportRange>
         value={range}
         onChange={setRange}
         options={[
-          { label: "24 hours", value: "24h" },
+          { label: "24h", value: "1d" },
           { label: "7 days", value: "7d" },
           { label: "30 days", value: "30d" },
         ]}
       />
 
       {loading ? (
-        <View style={{ marginTop: 16 }}>
+        <View style={{ marginTop: 16, gap: 12 }}>
           <Skeleton height={120} radius={16} />
-          <View style={{ height: 12 }} />
-          <Skeleton height={180} radius={16} />
-          <View style={{ height: 12 }} />
+          <Skeleton height={160} radius={16} />
           <Skeleton height={120} radius={16} />
         </View>
-      ) : !report ? (
+      ) : !report || !kpis ? (
         <Card style={{ marginTop: 16 }}>
           <EmptyState variant="reports" />
         </Card>
       ) : (
         <>
-          <View style={{ height: 16 }} />
+          {/* KPI Summary */}
+          <View style={{ height: 18 }} />
           <SectionHeader title="Key indicators" />
           <Card>
-            <StatLine
-              label="Mean time to recovery"
-              value={`${report.mttrMinutes} min`}
-            />
-            <View
-              style={[styles.divider, { backgroundColor: colors.border }]}
-            />
-            <StatLine
-              label="Availability"
-              value={`${report.availability.toFixed(2)}%`}
-            />
-            <View
-              style={[styles.divider, { backgroundColor: colors.border }]}
-            />
-            <StatLine
-              label="Total incidents"
-              value={String(report.totalIncidents)}
+            <StatLine label="Mean time to recovery" value={`${Math.round(kpis.avgMttr)} min`} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <StatLine label="Avg availability" value={`${kpis.avgAvailability.toFixed(2)}%`} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <StatLine label="Min availability" value={`${kpis.minAvail.toFixed(2)}%`} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <StatLine label="Total incidents" value={String(kpis.totalIncidents)} />
+          </Card>
+
+          {/* Incident trend */}
+          <View style={{ height: 18 }} />
+          <SectionHeader title="Incident trend" />
+          <Card>
+            <Text
+              style={{
+                color: colors.mutedForeground,
+                fontFamily: "Inter_500Medium",
+                fontSize: 11,
+                letterSpacing: 0.5,
+                marginBottom: 10,
+              }}
+            >
+              INCIDENTS PER PERIOD
+            </Text>
+            <TrendBars
+              labels={report.labels}
+              values={report.incidents}
+              color={colors.severityHigh}
             />
           </Card>
 
+          {/* Availability trend */}
           <View style={{ height: 18 }} />
-          <SectionHeader title="Incidents by hour" />
+          <SectionHeader title="Availability" />
           <Card>
-            <HourlyBars data={hourly} />
-            <View style={styles.axisRow}>
-              <Text style={[styles.axis, { color: colors.mutedForeground }]}>
-                00
-              </Text>
-              <Text style={[styles.axis, { color: colors.mutedForeground }]}>
-                06
-              </Text>
-              <Text style={[styles.axis, { color: colors.mutedForeground }]}>
-                12
-              </Text>
-              <Text style={[styles.axis, { color: colors.mutedForeground }]}>
-                18
-              </Text>
-              <Text style={[styles.axis, { color: colors.mutedForeground }]}>
-                24
-              </Text>
-            </View>
-          </Card>
-
-          <View style={{ height: 18 }} />
-          <SectionHeader title="Severity distribution" />
-          <Card>
-            <View style={styles.distRow}>
-              {report.distribution.map((d) => (
-                <View key={d.severity} style={{ alignItems: "center", gap: 6 }}>
-                  <SeverityBadge severity={d.severity} compact />
+            <Text
+              style={{
+                color: colors.mutedForeground,
+                fontFamily: "Inter_500Medium",
+                fontSize: 11,
+                letterSpacing: 0.5,
+                marginBottom: 10,
+              }}
+            >
+              UPTIME % PER PERIOD
+            </Text>
+            <TrendBars
+              labels={report.labels}
+              values={report.availability.map((v) => v - 98)}
+              color={colors.success}
+            />
+            <View style={styles.availRow}>
+              {report.availability.slice(-5).map((v, i) => (
+                <View key={i} style={styles.availChip}>
                   <Text
                     style={{
-                      color: colors.onSurface,
+                      color:
+                        v < 99
+                          ? colors.severityHigh
+                          : v < 99.9
+                            ? colors.severityAverage
+                            : colors.success,
                       fontFamily: "Inter_700Bold",
-                      fontSize: 16,
+                      fontSize: 12,
                     }}
                   >
-                    {d.weight}
+                    {v.toFixed(1)}%
                   </Text>
                 </View>
               ))}
             </View>
           </Card>
 
+          {/* MTTR trend */}
           <View style={{ height: 18 }} />
-          <SectionHeader title="Noisiest hosts" />
+          <SectionHeader title="Recovery time" />
           <Card>
-            {report.noisyHosts.map((h, idx) => (
-              <View
-                key={h.host}
-                style={[
-                  styles.noisyRow,
-                  idx > 0 && {
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: colors.border,
-                  },
-                ]}
+            <Text
+              style={{
+                color: colors.mutedForeground,
+                fontFamily: "Inter_500Medium",
+                fontSize: 11,
+                letterSpacing: 0.5,
+                marginBottom: 10,
+              }}
+            >
+              MTTR (MINUTES) PER PERIOD
+            </Text>
+            <TrendBars
+              labels={report.labels}
+              values={report.mttr}
+              color={colors.severityAverage}
+            />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <Feather name="clock" size={13} color={colors.mutedForeground} />
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 12,
+                }}
               >
-                <Feather
-                  name="server"
-                  size={14}
-                  color={colors.mutedForeground}
-                />
-                <Text
-                  style={{
-                    color: colors.onSurface,
-                    fontFamily: "Inter_500Medium",
-                    fontSize: 14,
-                    flex: 1,
-                  }}
-                >
-                  {h.host}
-                </Text>
-                <View
-                  style={[
-                    styles.countPill,
-                    { backgroundColor: `${colors.severityAverage}1A` },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: colors.severityAverage,
-                      fontFamily: "Inter_700Bold",
-                      fontSize: 12,
-                    }}
-                  >
-                    {h.count}
-                  </Text>
-                </View>
-              </View>
-            ))}
+                Target: under 15 min · Current avg: {Math.round(kpis.avgMttr)} min
+              </Text>
+            </View>
           </Card>
         </>
       )}
@@ -279,34 +267,29 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth },
   bars: {
     flexDirection: "row",
-    height: 120,
-    gap: 4,
+    height: 100,
+    gap: 3,
   },
   barCol: { flex: 1 },
   axisRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
+    marginTop: 6,
   },
   axis: {
     fontFamily: "Inter_400Regular",
     fontSize: 10,
   },
-  distRow: {
+  availRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 6,
+    marginTop: 10,
     flexWrap: "wrap",
-    gap: 12,
   },
-  noisyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-  },
-  countPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+  availChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: "rgba(0,0,0,0.04)",
   },
 });

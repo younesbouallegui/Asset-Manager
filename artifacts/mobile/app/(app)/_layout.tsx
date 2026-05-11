@@ -72,6 +72,10 @@ export default function AppLayout() {
             name="settings/ai-config"
             options={{ ...screenOpts(colors), title: "AI Configuration" }}
           />
+          <Stack.Screen
+            name="graphs"
+            options={{ headerShown: false }}
+          />
         </Stack>
       </Animated.View>
       <ReauthSheet />

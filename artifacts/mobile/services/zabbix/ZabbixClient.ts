@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import type { ZabbixItemFull, ZabbixTrend } from "./MetricDiscovery";
+
 export const ZABBIX_STORAGE = {
   serverUrl: "poulina.zabbix.serverUrl",
   apiToken: "poulina.zabbix.apiToken",
@@ -10,7 +12,7 @@ export const ANTHROPIC_STORAGE = {
   apiKey: "poulina.anthropic.apiKey",
 };
 
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 15_000;
 
 export type ZabbixSeverityCode = "0" | "1" | "2" | "3" | "4" | "5";
 
@@ -31,7 +33,7 @@ export interface ZabbixHost {
   name: string;
   available: "0" | "1" | "2";
   status: "0" | "1";
-  interfaces?: { ip: string; type: string; main: string }[];
+  interfaces?: { ip: string; type: string; main: string; dns?: string; port?: string }[];
   groups?: { groupid: string; name: string }[];
   triggers?: string;
   items?: string;
@@ -41,6 +43,8 @@ export interface ZabbixTrigger {
   triggerid: string;
   description: string;
   priority: ZabbixSeverityCode;
+  lastchange: string;
+  value: string; // "0"=OK "1"=PROBLEM
   hosts: {
     hostid: string;
     host: string;
@@ -69,6 +73,7 @@ export interface ZabbixUser {
 export interface ZabbixHistoryEntry {
   clock: string;
   value: string;
+  itemid?: string;
 }
 
 export interface ZabbixService {
@@ -81,6 +86,8 @@ export interface ZabbixService {
 export interface ZabbixApiInfo {
   version: string;
 }
+
+export type { ZabbixItemFull, ZabbixTrend };
 
 function normalizeServerUrl(serverUrl: string): string {
   let url = serverUrl.trim();
@@ -186,8 +193,6 @@ class ZabbixClient {
     return !!(url && token);
   }
 
-  // Route all authenticated data calls through the backend proxy to avoid CORS
-  // and keep API credentials server-side.
   private async callViaBackend<T>(method: string, params: unknown): Promise<T> {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const backendUrl = domain
@@ -247,6 +252,8 @@ class ZabbixClient {
     return this.callViaBackend<T>(method, params);
   }
 
+  // ─── Auth (direct calls, no CORS issues since they use session tokens) ─────
+
   async userLogin(serverUrl: string, username: string, password: string): Promise<string> {
     return rpc<string>(serverUrl.trim(), "user.login", { username, password }, null, false);
   }
@@ -271,17 +278,21 @@ class ZabbixClient {
     }
   }
 
-  async testConnection(): Promise<string> {
+  async testConnection(): Promise<{ version: string; hostCount: number; problemCount: number }> {
     const serverUrl = await this.getServerUrl();
     const apiToken = await this.getApiToken();
     if (!serverUrl) throw new Error("ZABBIX_NOT_CONFIGURED");
     if (!apiToken) throw new Error("API_TOKEN_MISSING");
-    // apiinfo.version is a public method — must NOT send Authorization header
     const version = await rpc<string>(serverUrl, "apiinfo.version", {}, null, false);
-    // Verify the bearer token actually works with a lightweight authenticated call
-    await rpc<ZabbixHost[]>(serverUrl, "host.get", { output: ["hostid"], limit: 1 }, apiToken, true);
-    return version;
+    // Run these in parallel after getting version
+    const [hosts, problems] = await Promise.all([
+      rpc<ZabbixHost[]>(serverUrl, "host.get", { output: ["hostid"], limit: 1000 }, apiToken, true),
+      rpc<ZabbixProblem[]>(serverUrl, "problem.get", { output: ["eventid"], limit: 1000 }, apiToken, true),
+    ]);
+    return { version, hostCount: hosts.length, problemCount: problems.length };
   }
+
+  // ─── Core data methods (all via backend proxy) ────────────────────────────
 
   async getProblems(extra?: Record<string, unknown>): Promise<ZabbixProblem[]> {
     return this.call("problem.get", {
@@ -290,7 +301,7 @@ class ZabbixClient {
       selectTags: "extend",
       sortfield: "eventid",
       sortorder: "DESC",
-      limit: 100,
+      limit: 200,
       ...(extra ?? {}),
     });
   }
@@ -298,7 +309,7 @@ class ZabbixClient {
   async getHosts(extra?: Record<string, unknown>): Promise<ZabbixHost[]> {
     return this.call("host.get", {
       output: ["hostid", "host", "name", "available", "status"],
-      selectInterfaces: ["ip", "type", "main"],
+      selectInterfaces: ["ip", "type", "main", "dns", "port"],
       selectGroups: ["groupid", "name"],
       ...(extra ?? {}),
     });
@@ -308,9 +319,56 @@ class ZabbixClient {
     const ids = triggerids.filter((id) => id && id !== "0");
     if (ids.length === 0) return [];
     return this.call("trigger.get", {
-      output: ["triggerid", "description", "priority"],
+      output: ["triggerid", "description", "priority", "lastchange", "value"],
       selectHosts: ["hostid", "host", "name"],
       triggerids: ids,
+    });
+  }
+
+  async getTriggersForHost(hostid: string): Promise<ZabbixTrigger[]> {
+    return this.call("trigger.get", {
+      output: ["triggerid", "description", "priority", "lastchange", "value"],
+      selectHosts: ["hostid", "host", "name"],
+      hostids: [hostid],
+      only_true: 1,
+      filter: { value: "1" },
+      sortfield: "priority",
+      sortorder: "DESC",
+      limit: 50,
+    });
+  }
+
+  // ─── Items / Metrics ──────────────────────────────────────────────────────
+
+  async getItemsForHosts(hostids: string[]): Promise<ZabbixItemFull[]> {
+    if (hostids.length === 0) return [];
+    return this.call("item.get", {
+      output: ["itemid", "name", "key_", "lastvalue", "units", "lastclock", "hostid", "value_type"],
+      hostids,
+      monitored: true,
+      search: {
+        key_: [
+          "system.cpu.util",
+          "vm.memory.size",
+          "vfs.fs.size",
+          "icmpping",
+          "net.if.in",
+          "net.if.out",
+          "system.uptime",
+        ],
+      },
+      searchByAny: true,
+    });
+  }
+
+  async getHostAllItems(hostid: string): Promise<ZabbixItemFull[]> {
+    return this.call("item.get", {
+      output: ["itemid", "name", "key_", "lastvalue", "units", "lastclock", "hostid", "value_type"],
+      hostids: [hostid],
+      monitored: true,
+      sortfield: "name",
+      sortorder: "ASC",
+      limit: 200,
     });
   }
 
@@ -319,20 +377,45 @@ class ZabbixClient {
       output: ["itemid", "name", "lastvalue", "units", "lastclock"],
       hostids,
       monitored: true,
-      limit: 30,
+      limit: 50,
     });
   }
 
-  async getHistory(itemids: string[], timeFrom: number): Promise<ZabbixHistoryEntry[]> {
+  // ─── History / Trends ─────────────────────────────────────────────────────
+
+  async getHistory(
+    itemids: string[],
+    timeFrom: number,
+    valueType: 0 | 3 = 0,
+  ): Promise<ZabbixHistoryEntry[]> {
+    if (itemids.length === 0) return [];
     return this.call("history.get", {
       output: "extend",
-      history: 0,
+      history: valueType,
       itemids,
       time_from: timeFrom,
       time_till: Math.floor(Date.now() / 1000),
-      limit: 100,
+      sortfield: "clock",
+      sortorder: "ASC",
+      limit: 500,
     });
   }
+
+  async getTrends(
+    itemids: string[],
+    timeFrom: number,
+    timeTill?: number,
+  ): Promise<ZabbixTrend[]> {
+    if (itemids.length === 0) return [];
+    return this.call("trend.get", {
+      output: ["clock", "num", "value_min", "value_avg", "value_max", "itemid"],
+      itemids,
+      time_from: timeFrom,
+      time_till: timeTill ?? Math.floor(Date.now() / 1000),
+    });
+  }
+
+  // ─── Users ────────────────────────────────────────────────────────────────
 
   async getUsers(): Promise<ZabbixUser[]> {
     return this.call("user.get", {
@@ -340,6 +423,8 @@ class ZabbixClient {
       selectRole: ["roleid", "name"],
     });
   }
+
+  // ─── Events ───────────────────────────────────────────────────────────────
 
   async acknowledgeEvent(eventids: string[]): Promise<void> {
     await this.call("event.acknowledge", {

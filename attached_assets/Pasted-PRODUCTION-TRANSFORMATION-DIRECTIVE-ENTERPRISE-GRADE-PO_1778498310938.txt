@@ -1,0 +1,245 @@
+PRODUCTION TRANSFORMATION DIRECTIVE — ENTERPRISE-GRADE POULINA ZABBIX OPS PLATFORM
+
+You are now upgrading this application from a functional Zabbix-connected app into a full production-grade enterprise infrastructure intelligence platform for Poulina Group.
+
+MISSION:
+Transform the current mobile platform into a polished, executive-level, enterprise-ready iOS + Android operational product with real infrastructure observability, advanced dashboards, custom widgets, dynamic graphing, zero-friction Zabbix onboarding, and full production deployment readiness.
+
+====================================================
+PHASE 1 — REAL INFRASTRUCTURE TELEMETRY (NO MOCKS)
+====================================================
+
+Replace all placeholder or estimated infrastructure values with REAL live Zabbix metrics.
+
+For each host, dynamically retrieve and display:
+- CPU utilization (%)
+- Memory utilization (% used / free)
+- Disk utilization (% used / free)
+- Ping / latency
+- Network traffic (incoming/outgoing)
+- Availability / uptime
+- Agent availability
+- Trigger count
+- Host health score
+
+Use:
+- item.get
+- history.get
+- trend.get
+- host.get
+- trigger.get
+
+Implement smart item discovery so metrics auto-map based on item names:
+Examples:
+- system.cpu.util
+- vm.memory.size
+- vfs.fs.size
+- icmpping
+- net.if.in
+- net.if.out
+
+No hardcoded assumptions.
+System must intelligently detect usable metrics per host.
+
+====================================================
+PHASE 2 — ADVANCED CUSTOM DASHBOARD BUILDER
+====================================================
+
+Build a true enterprise dashboard management system.
+
+Add:
+1. “Add Widget” button
+2. “Edit Dashboard” mode
+3. Drag & drop widget positioning
+4. Resize widgets (small / medium / large / full width)
+5. Multi-dashboard support
+6. Save layouts per user
+7. Dashboard templates:
+   - Executive Overview
+   - NOC Monitoring
+   - Infrastructure Health
+   - Network Operations
+   - SLA / Availability
+
+Widget types:
+- Line chart
+- Area chart
+- Bar chart
+- Donut chart
+- Gauge chart
+- KPI card
+- SLA widget
+- Host health widget
+- Incident heatmap
+- Top alerts widget
+
+====================================================
+PHASE 3 — GRAPH CREATION ENGINE
+====================================================
+
+When user clicks Add Graph:
+Step 1: Select Host
+Step 2: Auto-load all available items for that host
+Step 3: Select metric:
+- CPU
+- Memory
+- Disk
+- Ping
+- Network
+- Custom item
+Step 4: Select graph type:
+- Line
+- Area
+- Bar
+- Gauge
+- Heatmap
+Step 5: Select time range:
+- 1H
+- 24H
+- 7D
+- 30D
+- Custom
+Step 6: Place and resize on dashboard
+
+Graph requirements:
+- Real-time Zabbix history/trends
+- Beautiful modern visuals
+- Smooth animations
+- Zoom
+- Tooltips
+- Threshold colors
+- Multi-series comparison
+- Export image/PDF
+
+====================================================
+PHASE 4 — ZERO-FRICTION ZABBIX CONNECTION UX
+====================================================
+
+In Settings > Zabbix:
+Current issue:
+Manual test/connect flow is not enterprise-grade.
+
+Upgrade to:
+- Auto-connect immediately after URL + Token entry
+- Real-time validation
+- Live status badge:
+   Connected / Invalid Token / Permissions Issue / Timeout
+- Auto-fetch:
+   user profile
+   API version
+   host count
+   problem count
+- Save automatically
+- One-click reconnect
+- Secure token storage
+- Connection health diagnostics
+
+NO unnecessary “Test Connection” button.
+Connection should feel instant and premium.
+
+====================================================
+PHASE 5 — INFRASTRUCTURE SECTION UPGRADE
+====================================================
+
+Transform Infrastructure tab into:
+- Host inventory
+- Host details page
+- Per-host metrics dashboard
+- Live charts
+- Trigger list
+- Interface/IP details
+- OS details
+- Group membership
+- Availability timeline
+- Last check
+- Recent alerts
+
+Add:
+- Search
+- Filter by group
+- Filter by status
+- Sort by severity / uptime / availability
+
+====================================================
+PHASE 6 — ENTERPRISE UI/UX
+====================================================
+
+Design language:
+- Premium dark mode
+- Poulina corporate identity
+- Smooth glassmorphism cards
+- Modern gradients
+- Clean data density
+- Mobile-first executive design
+- NOC-grade usability
+
+Branding:
+- Replace all generic branding with official Poulina branding
+- App name
+- Splash screen
+- App icon
+- Login visuals
+- Header logo
+- Settings branding
+
+Set official app icon/logo as production-ready:
+- iOS App Icon
+- Android Adaptive Icon
+- Splash assets
+- Notification icon
+
+====================================================
+PHASE 7 — BUILD READINESS
+====================================================
+
+Prepare app for:
+- iOS IPA / App Store
+- Android APK / AAB / Play Store
+
+Required:
+- Expo/EAS production config
+- app.json / app.config.ts fully configured
+- Proper bundle identifiers
+- Splash screens
+- Permissions
+- Icons
+- Build profiles
+- Environment separation:
+   dev / staging / production
+
+====================================================
+PHASE 8 — CODE QUALITY
+====================================================
+
+Refactor architecture:
+- Widget registry system
+- Dashboard state persistence
+- Modular graph engine
+- Zabbix metric normalization layer
+- Error boundaries
+- Loading skeletons
+- Offline fallback
+- Retry queues
+- Performance optimization
+
+====================================================
+CRITICAL REQUIREMENTS
+====================================================
+
+NON-NEGOTIABLE:
+- 100% real Zabbix data
+- No mock dashboards
+- No placeholder charts
+- No fake metrics
+- No demo widgets
+- Production-level polish
+- Executive-grade dashboarding
+- Fully customizable dashboard builder
+- Real graphing from host/item history
+- Build-ready mobile deployment
+
+END STATE:
+This app should feel like a fusion of:
+Zabbix + Datadog + Grafana + ServiceNow Mobile + Executive NOC
+
+Deliver as a polished enterprise Poulina AI Ops platform ready for corporate deployment.

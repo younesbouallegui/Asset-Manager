@@ -45,7 +45,7 @@ function buildSystemPrompt(incidents: Incident[]): string {
     .map((i) => `  - [${i.severity}] ${i.title} on ${i.host || "unknown"}`)
     .join("\n");
 
-  const active = incidents.filter((i) => i.status === "OPEN").length;
+  const active = incidents.filter((i) => i.status === "open").length;
   const disasters = incidents.filter((i) => i.severity === "DISASTER").length;
   const highs = incidents.filter((i) => i.severity === "HIGH").length;
 
