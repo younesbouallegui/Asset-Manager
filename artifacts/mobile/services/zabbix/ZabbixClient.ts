@@ -130,6 +130,8 @@ async function rpc<T>(
     }
   }
 
+  console.log(`[ZabbixRPC] → ${method}`, JSON.stringify({ endpoint, params }));
+
   let res: Response;
   try {
     res = await withTimeout(
@@ -140,23 +142,30 @@ async function rpc<T>(
       }),
     );
   } catch (e) {
+    const msg = (e as Error).message;
+    console.error(`[ZabbixRPC] ✗ ${method} fetch error:`, JSON.stringify({ endpoint, error: msg }));
     if (e instanceof TypeError) throw new Error("NETWORK_ERROR");
     throw e;
   }
 
   if (!res.ok) {
+    console.error(`[ZabbixRPC] ✗ ${method} HTTP ${res.status}`, JSON.stringify({ endpoint }));
     throw new Error(`HTTP_${res.status}`);
   }
 
   const json = (await res.json()) as { result?: T; error?: { code: number; data?: string; message?: string } };
 
   if (json.error) {
-    console.error("[ZabbixRPC] API error:", JSON.stringify(json.error), "method:", method);
+    console.error(
+      `[ZabbixRPC] ✗ ${method} API error:`,
+      JSON.stringify({ error: json.error, endpoint, params }),
+    );
     const e = new Error(json.error.data ?? json.error.message ?? "Zabbix error") as Error & { code: number };
     e.code = json.error.code;
     throw e;
   }
 
+  console.log(`[ZabbixRPC] ✓ ${method} OK`);
   return json.result as T;
 }
 
@@ -177,12 +186,65 @@ class ZabbixClient {
     return !!(url && token);
   }
 
+  // Route all authenticated data calls through the backend proxy to avoid CORS
+  // and keep API credentials server-side.
+  private async callViaBackend<T>(method: string, params: unknown): Promise<T> {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const backendUrl = domain
+      ? `https://${domain}/api/zabbix/rpc`
+      : "http://localhost:8080/api/zabbix/rpc";
+
+    console.log(`[ZabbixClient] → ${method} (via backend)`, JSON.stringify({ backendUrl, params }));
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let res: Response;
+    try {
+      res = await fetch(backendUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, params }),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      const name = (e as Error).name;
+      const msg = (e as Error).message;
+      console.error(`[ZabbixClient] ✗ ${method} fetch error:`, JSON.stringify({ backendUrl, error: msg }));
+      if (name === "AbortError") throw new Error("TIMEOUT");
+      if (e instanceof TypeError) throw new Error("NETWORK_ERROR");
+      throw e;
+    }
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`[ZabbixClient] ✗ ${method} HTTP ${res.status}:`, errText);
+      throw new Error(`HTTP_${res.status}`);
+    }
+
+    const json = (await res.json()) as {
+      result?: T;
+      error?: { code: number; data?: string; message?: string };
+    };
+
+    if (json.error) {
+      console.error(
+        `[ZabbixClient] ✗ ${method} API error:`,
+        JSON.stringify({ error: json.error, backendUrl, params }),
+      );
+      const e = new Error(json.error.data ?? json.error.message ?? "Zabbix error") as Error & { code: number };
+      e.code = json.error.code;
+      throw e;
+    }
+
+    console.log(`[ZabbixClient] ✓ ${method} OK`);
+    return json.result as T;
+  }
+
   private async call<T>(method: string, params: unknown): Promise<T> {
-    const serverUrl = await this.getServerUrl();
-    const apiToken = await this.getApiToken();
-    if (!serverUrl) throw new Error("ZABBIX_NOT_CONFIGURED");
-    if (!apiToken) throw new Error("ZABBIX_NOT_CONFIGURED");
-    return rpc<T>(serverUrl, method, params, apiToken, true);
+    return this.callViaBackend<T>(method, params);
   }
 
   async userLogin(serverUrl: string, username: string, password: string): Promise<string> {
@@ -193,7 +255,7 @@ class ZabbixClient {
     const users = await rpc<ZabbixUser[]>(
       serverUrl,
       "user.get",
-      { output: ["userid", "username", "name", "surname", "roleid", "type"], filter: { username: [username] } },
+      { output: ["userid", "username", "name", "surname", "roleid"], filter: { username: [username] } },
       sessionToken,
       false,
     );
@@ -226,8 +288,8 @@ class ZabbixClient {
       output: ["eventid", "objectid", "severity", "clock", "name", "acknowledged"],
       selectAcknowledges: "extend",
       selectTags: "extend",
-      sortfield: ["severity", "clock"],
-      sortorder: ["DESC", "DESC"],
+      sortfield: "eventid",
+      sortorder: "DESC",
       limit: 100,
       ...(extra ?? {}),
     });
