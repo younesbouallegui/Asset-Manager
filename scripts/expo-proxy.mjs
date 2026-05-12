@@ -2,7 +2,7 @@ import http from "node:http";
 import net from "node:net";
 
 const API_PORT = 8080;
-const EXPO_PORT = 18115;
+const EXPO_PORT = 8081;
 const PROXY_PORT = parseInt(process.env.PORT || "5000", 10);
 
 function targetPort(url) {
