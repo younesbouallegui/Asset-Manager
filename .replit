@@ -82,24 +82,12 @@ externalPort = 8080
 
 [[ports]]
 localPort = 8081
-
-[[ports]]
-localPort = 8082
-externalPort = 3001
-
-[[ports]]
-localPort = 18115
-externalPort = 80
-
-[[ports]]
-localPort = 18116
-externalPort = 3000
+externalPort = 8081
 
 [userenv]
 
 [userenv.shared]
 EXPO_PUBLIC_ZABBIX_URL = "https://zabbix.younesblg.com"
-EXPO_PUBLIC_ZABBIX_TOKEN = "9853f91426bdc5f49a0e37d463e5e493859615bbf43b8a4381d6ad608a9a0e12"
 
 [nix]
 channel = "stable-25_05"
