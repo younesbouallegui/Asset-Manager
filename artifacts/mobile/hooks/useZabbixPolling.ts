@@ -16,11 +16,21 @@ function friendlyError(msg: string): string {
   if (msg === "ZABBIX_NOT_CONFIGURED")
     return "Connect Zabbix in Settings to view live data";
   if (msg === "NETWORK_ERROR")
-    return "Cannot reach Zabbix server — check connection";
+    return "Cannot reach backend server — check your network";
+  if (msg === "SSL_ERROR")
+    return "SSL/TLS certificate error — server may use a self-signed certificate";
+  if (msg === "DNS_ERROR")
+    return "Cannot resolve server hostname — check the server URL in Settings";
+  if (msg.startsWith("AUTH_ERROR"))
+    return "Authentication failed — check the API token in Settings";
+  if (msg === "API_TOKEN_MISSING")
+    return "API token not configured — add it in Settings";
   if (msg === "HTTP_401") return "Unauthorized — check API token in Settings";
   if (msg === "HTTP_403") return "Forbidden — check API token permissions";
-  if (msg === "TIMEOUT") return "Connection timed out — check server URL";
-  if (msg.startsWith("HTTP_")) return `Server error: ${msg}`;
+  if (msg === "HTTP_502") return "Backend cannot reach Zabbix server — check server URL";
+  if (msg === "HTTP_503") return "Zabbix not configured on backend — contact administrator";
+  if (msg === "TIMEOUT") return "Connection timed out — check server URL and network";
+  if (msg.startsWith("HTTP_")) return `Server error (${msg}) — tap to retry`;
   return "Failed to load data — tap to retry";
 }
 

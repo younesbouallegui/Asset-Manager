@@ -23,12 +23,17 @@
       }
     },
     "android": {
+      "package": "com.poulina.opshub",
       "icon": "./assets/images/poulina-logo.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/poulina-logo.png",
         "backgroundColor": "#204e8f"
       },
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/poulina-logo.png"

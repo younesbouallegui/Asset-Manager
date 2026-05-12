@@ -1,0 +1,74 @@
+CRITICAL ANDROID PRODUCTION CONNECTIVITY AUDIT REQUIRED
+
+The React render-loop crash may be fixed separately, but the Android APK also has a distinct enterprise blocker:
+
+ERROR:
+“Cannot reach Zabbix server — check connection”
+
+IMPORTANT:
+Fixing UI/render errors alone is NOT sufficient.
+You must perform a full production connectivity audit for Android APK builds.
+
+MANDATORY DIAGNOSTIC SCOPE:
+
+1. ZABBIX CONNECTIVITY
+- Validate exact Zabbix API endpoint
+- Confirm correct api_jsonrpc.php path
+- Confirm token validity
+- Confirm authentication headers
+- Test host reachability from Android device
+- Test HTTPS/TLS certificate validity
+- Detect self-signed SSL rejection
+- Validate DNS resolution
+
+2. ANDROID BUILD CONFIG
+- Verify AndroidManifest includes INTERNET permission
+- Verify network security config
+- If HTTP is used, configure cleartextTraffic
+- Validate Expo/EAS environment variables are injected into release APK
+- Ensure production build is not using placeholder/mock URL
+
+3. ENVIRONMENT VARIABLES
+- Audit:
+  EXPO_PUBLIC_ZABBIX_URL
+  EXPO_PUBLIC_ZABBIX_TOKEN
+  SUPABASE_URL
+  SUPABASE_EDGE_FUNCTION_URL
+- Confirm release build receives real values
+- Detect undefined env at runtime
+
+4. CONNECTOR / BACKEND
+- Validate Supabase Edge Function or middleware connector
+- Ensure deployed backend routes to live Zabbix
+- Remove mock/demo fallback
+- Confirm Android requests hit production backend
+
+5. ERROR OBSERVABILITY
+- Add detailed logs:
+  - Request URL
+  - Response code
+  - TLS error
+  - Timeout
+  - Auth failure
+  - DNS failure
+- Distinguish:
+  - No internet
+  - Invalid token
+  - SSL issue
+  - Wrong endpoint
+  - Connector failure
+
+6. SUCCESS CRITERIA
+- APK installed on Android
+- Real Zabbix connection succeeds
+- Dashboard loads live hosts/incidents
+- No “Cannot reach Zabbix server”
+- No mock data
+- Production-grade stable connectivity
+
+FINAL DELIVERABLE:
+- Root cause
+- Exact failing layer (frontend / Android / env / connector / Zabbix)
+- Files changed
+- Before/after config
+- Verified APK connectivity
