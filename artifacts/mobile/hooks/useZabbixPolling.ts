@@ -36,26 +36,23 @@ export function useZabbixPolling(intervalMs = 60_000): ZabbixPollingResult {
   const mountedRef = useRef(true);
 
   const doFetch = useCallback(async (silent = false) => {
-    console.log("[ZabbixPolling] fetching — isReady:", isReady, "status:", status);
     if (!silent) setLoading(true);
     setError(null);
     try {
       const [p, h] = await Promise.all([getIncidents(), getHosts()]);
       if (!mountedRef.current) return;
-      console.log("[ZabbixPolling] result — problems:", p.length, "hosts:", h.length);
       setProblems(p);
       setHosts(h);
       setLastSync(Date.now());
     } catch (e) {
       if (!mountedRef.current) return;
       const msg = (e as Error).message ?? "Unknown error";
-      console.log("[ZabbixPolling] error:", msg);
       setError(friendlyError(msg));
     } finally {
       if (!mountedRef.current) return;
       if (!silent) setLoading(false);
     }
-  }, [isReady, status]);
+  }, [isReady]);
 
   const refresh = useCallback(() => {
     doFetch(false);

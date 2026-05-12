@@ -329,6 +329,8 @@ export default function DashboardScreen() {
   const { problems, hosts, loading, error, lastSync, refresh } =
     useZabbixPolling(REFRESH_INTERVAL);
 
+  const { markSynced } = zabbix;
+
   // Load saved layout on mount
   useEffect(() => {
     loadDashboardLayout().then(setLayout);
@@ -357,8 +359,8 @@ export default function DashboardScreen() {
   }, [problems, loading]);
 
   useEffect(() => {
-    if (lastSync) zabbix.markSynced();
-  }, [lastSync, zabbix]);
+    if (lastSync) markSynced();
+  }, [lastSync, markSynced]);
 
   // Build stats
   const stats = useMemo<LiveDashboardStats | null>(() => {

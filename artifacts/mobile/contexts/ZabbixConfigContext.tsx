@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -111,23 +112,39 @@ export function ZabbixConfigProvider({ children }: { children: React.ReactNode }
     AsyncStorage.setItem(ZABBIX_STORAGE.lastSync, String(now)).catch(() => {});
   }, []);
 
+  const value = useMemo<ZabbixConfigValue>(
+    () => ({
+      serverUrl,
+      apiToken,
+      status,
+      zabbixVersion,
+      hostCount,
+      problemCount,
+      lastSync,
+      setServerUrl,
+      setApiToken,
+      testConnection,
+      markSynced,
+      isReady,
+    }),
+    [
+      serverUrl,
+      apiToken,
+      status,
+      zabbixVersion,
+      hostCount,
+      problemCount,
+      lastSync,
+      setServerUrl,
+      setApiToken,
+      testConnection,
+      markSynced,
+      isReady,
+    ],
+  );
+
   return (
-    <ZabbixConfigContext.Provider
-      value={{
-        serverUrl,
-        apiToken,
-        status,
-        zabbixVersion,
-        hostCount,
-        problemCount,
-        lastSync,
-        setServerUrl,
-        setApiToken,
-        testConnection,
-        markSynced,
-        isReady,
-      }}
-    >
+    <ZabbixConfigContext.Provider value={value}>
       {children}
     </ZabbixConfigContext.Provider>
   );

@@ -3,7 +3,7 @@ import net from "node:net";
 import QRCode from "qrcode";
 
 const API_PORT = 8080;
-const EXPO_PORT = 8081;
+const EXPO_PORT = parseInt(process.env.EXPO_WEB_PORT || "18115", 10);
 const PROXY_PORT = parseInt(process.env.PORT || "5000", 10);
 
 const EXPO_DEV_DOMAIN = process.env.REPLIT_EXPO_DEV_DOMAIN || "";
@@ -14,8 +14,12 @@ function targetPort(url) {
 }
 
 function isRootBrowserRequest(req) {
+  const url = req.url ?? "";
+  const isRoot = url === "/" || url === "" || url === "/?";
+  const wantsWeb = url.includes("web=1");
   return (
-    (req.url === "/" || req.url === "") &&
+    isRoot &&
+    !wantsWeb &&
     req.method === "GET" &&
     (req.headers["accept"] || "").includes("text/html")
   );
@@ -138,7 +142,7 @@ async function landingPage(expoGoUrl) {
     <p class="no-qr">Expo Go URL not available in this environment.</p>
     `}
 
-    <a class="web-btn" href="/app">Open Web Version</a>
+    <a class="web-btn" href="/?web=1">Open Web Version</a>
   </div>
 </body>
 </html>`;
