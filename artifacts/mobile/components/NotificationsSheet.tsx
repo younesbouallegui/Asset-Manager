@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -24,6 +26,10 @@ interface Notification extends Incident {
   read: boolean;
 }
 
+const DISMISS_THRESHOLD = 120;
+const DISMISS_VELOCITY = 0.6;
+const SHEET_HEIGHT_ESTIMATE = 560;
+
 export function NotificationsSheet({
   visible,
   onClose,
@@ -35,14 +41,87 @@ export function NotificationsSheet({
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Notification[]>([]);
 
+  const translateY = useRef(new Animated.Value(SHEET_HEIGHT_ESTIMATE)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const closeSheetRef = useRef<() => void>(() => {});
+
+  const closeSheet = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: SHEET_HEIGHT_ESTIMATE,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onClose());
+  }, [onClose, translateY, backdropOpacity]);
+
+  useEffect(() => {
+    closeSheetRef.current = closeSheet;
+  }, [closeSheet]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gs) =>
+        gs.dy > 5 && Math.abs(gs.dy) > Math.abs(gs.dx),
+      onPanResponderMove: (_evt, gs) => {
+        if (gs.dy > 0) {
+          translateY.setValue(gs.dy);
+        }
+      },
+      onPanResponderRelease: (_evt, gs) => {
+        if (gs.dy > DISMISS_THRESHOLD || gs.vy > DISMISS_VELOCITY) {
+          closeSheetRef.current();
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            tension: 70,
+            friction: 12,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 70,
+          friction: 12,
+          useNativeDriver: true,
+        }).start();
+      },
+    }),
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(SHEET_HEIGHT_ESTIMATE);
+      backdropOpacity.setValue(0);
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible, translateY, backdropOpacity]);
+
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
     getIncidents().then((list) => {
       if (cancelled) return;
-      setItems(
-        list.slice(0, 10).map((inc, idx) => ({ ...inc, read: idx >= 3 })),
-      );
+      setItems(list.slice(0, 10).map((inc, idx) => ({ ...inc, read: idx >= 3 })));
     });
     return () => {
       cancelled = true;
@@ -53,17 +132,39 @@ export function NotificationsSheet({
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  const markRead = (id: string) => {
+    setItems((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    );
+  };
+
   const bottomPad = (Platform.OS === "web" ? 34 : insets.bottom) + 16;
+  const handleBg =
+    colors.scheme === "dark" ? "rgba(255,255,255,0.18)" : "rgba(15,25,35,0.18)";
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={closeSheet}
+      statusBarTranslucent
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
+      <Animated.View
+        style={[styles.backdrop, { opacity: backdropOpacity }]}
+        pointerEvents="box-none"
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.sheetContainer,
+          { transform: [{ translateY }] },
+        ]}
+        pointerEvents="box-none"
+      >
+        <View
           style={[
             styles.sheet,
             {
@@ -72,20 +173,9 @@ export function NotificationsSheet({
               paddingBottom: bottomPad,
             },
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
-          <View style={styles.handleWrap}>
-            <View
-              style={[
-                styles.handle,
-                {
-                  backgroundColor:
-                    colors.scheme === "dark"
-                      ? "rgba(255,255,255,0.18)"
-                      : "rgba(15,25,35,0.18)",
-                },
-              ]}
-            />
+          <View style={styles.handleWrap} {...panResponder.panHandlers}>
+            <View style={[styles.handle, { backgroundColor: handleBg }]} />
           </View>
 
           <View style={styles.headerRow}>
@@ -115,13 +205,18 @@ export function NotificationsSheet({
             style={{ maxHeight: 480 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}
+            scrollEventThrottle={16}
           >
             {items.map((n) => (
-              <View
+              <Pressable
                 key={n.id}
-                style={[
+                onPress={() => markRead(n.id)}
+                style={({ pressed }) => [
                   styles.item,
-                  { borderBottomColor: colors.border },
+                  {
+                    borderBottomColor: colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
                 ]}
               >
                 <View style={styles.dotCol}>
@@ -133,7 +228,7 @@ export function NotificationsSheet({
                       ]}
                     />
                   ) : (
-                    <View style={styles.unreadDot} />
+                    <View style={styles.unreadDotEmpty} />
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
@@ -177,7 +272,7 @@ export function NotificationsSheet({
                     </Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
             ))}
             {items.length === 0 ? (
               <View style={{ padding: 28, alignItems: "center" }}>
@@ -199,17 +294,22 @@ export function NotificationsSheet({
               </View>
             ) : null}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.50)",
+  },
+  sheetContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   sheet: {
     borderTopLeftRadius: 22,
@@ -222,10 +322,10 @@ const styles = StyleSheet.create({
   },
   handleWrap: {
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   handle: {
-    width: 40,
+    width: 44,
     height: 4,
     borderRadius: 2,
   },
@@ -248,6 +348,11 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  unreadDotEmpty: {
     width: 8,
     height: 8,
     borderRadius: 4,

@@ -145,11 +145,13 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: "48%",
-    flexGrow: 1,
+    flexBasis: "48%",
+    flexGrow: 0,
+    flexShrink: 0,
   },
   statCardInner: {
     gap: 6,
-    minHeight: 110,
+    height: 120,
     justifyContent: "space-between",
   },
   iconBubble: {

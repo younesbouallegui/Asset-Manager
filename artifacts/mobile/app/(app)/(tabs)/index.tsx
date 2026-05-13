@@ -342,11 +342,14 @@ export default function DashboardScreen() {
     }, [zabbix.isReady, refresh]),
   );
 
-  // Detect new incidents
+  // Detect new incidents — seed badge on first load, increment on new arrivals
   useEffect(() => {
     if (loading) return;
     if (prevIncidentIds.current.size === 0) {
       prevIncidentIds.current = new Set(problems.map((i) => i.id));
+      // Seed badge with current active count so user knows there are items to view
+      const activeNow = problems.filter((p) => p.status !== "resolved").length;
+      if (activeNow > 0) setUnreadCount(activeNow);
       return;
     }
     const incoming = problems.filter((i) => !prevIncidentIds.current.has(i.id));
@@ -577,17 +580,21 @@ export default function DashboardScreen() {
                     <View
                       style={[
                         styles.notifDot,
-                        { backgroundColor: colors.severityHigh },
+                        {
+                          backgroundColor: colors.severityHigh,
+                          borderColor: colors.scheme === "dark" ? "#1a2535" : "#f0f4fa",
+                        },
                       ]}
                     >
                       <Text
                         style={{
                           color: "#fff",
-                          fontSize: 9,
+                          fontSize: unreadCount > 9 ? 8 : 9,
                           fontFamily: "Inter_700Bold",
+                          lineHeight: 13,
                         }}
                       >
-                        {unreadCount}
+                        {unreadCount > 99 ? "99+" : unreadCount}
                       </Text>
                     </View>
                   ) : null}
@@ -780,13 +787,16 @@ const styles = StyleSheet.create({
   },
   notifDot: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
   liveBar: {
     flexDirection: "row",
