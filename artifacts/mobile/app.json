@@ -19,8 +19,10 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
-      }
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.poulina.aiopshub"
     },
     "android": {
       "icon": "./assets/images/poulina-logo.png",
@@ -28,7 +30,8 @@
         "foregroundImage": "./assets/images/poulina-logo.png",
         "backgroundColor": "#204e8f"
       },
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "package": "com.poulina.aiopshub"
     },
     "web": {
       "favicon": "./assets/images/poulina-logo.png"
@@ -46,6 +49,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d1fbc705-05fc-43a8-9c9b-9e1ce26fc8f4"
+      }
     }
   }
 }
