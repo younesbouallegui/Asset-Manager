@@ -1,0 +1,182 @@
+CRITICAL CHATOPS ENTERPRISE TRANSFORMATION — REAL AI OPS ENGINE (100% WORKING)
+
+OBJECTIVE:
+Transform ChatOps from placeholder/demo/free built-in mock assistant into a fully functional production-grade AI-powered incident intelligence system using a REAL AI API integration.
+
+CORE REQUIREMENT:
+ChatOps must actually work end-to-end with live AI responses, live Zabbix incident context, and deep incident analysis.
+
+━━━━━━━━━━━━━━━━━━
+PHASE 1 — REAL AI CONNECTIVITY (HIGHEST PRIORITY)
+━━━━━━━━━━━━━━━━━━
+
+CURRENT BLOCKER:
+ChatOps shows:
+“Could not reach AI. Check your internet connection...”
+and appears to be placeholder or broken.
+
+MANDATORY FIX:
+- Replace all fake/demo/free built-in logic
+- Integrate real AI model API (production)
+- Support configurable provider:
+   - OpenAI API
+   - OpenRouter
+   - Local LLM endpoint
+   - Free-tier provider if configured
+- Route through secure backend proxy
+- NEVER expose API key in frontend
+- Add:
+   EXPO_PUBLIC_AI_BACKEND_URL
+   AI_PROVIDER
+   AI_MODEL
+- Validate Android APK connectivity
+
+REQUIRED:
+- User sends message → backend AI request → real response
+- Timeout handling
+- Retry logic
+- Token/auth validation
+- Rate limit protection
+
+━━━━━━━━━━━━━━━━━━
+PHASE 2 — INCIDENT-TO-CHATOPS DEEP LINKING
+━━━━━━━━━━━━━━━━━━
+
+NEW FEATURE:
+Every incident card must include:
+- “Analyze with ChatOps”
+OR
+- Tap incident → “Open in ChatOps”
+
+WHEN TRIGGERED:
+Automatically send full incident context into ChatOps:
+
+Example payload:
+- Incident title
+- Severity
+- Host
+- Trigger expression
+- Timestamp
+- Duration
+- Tags
+- Recent metrics
+- Related alerts
+- Host health
+- CPU / Disk / Network
+- Zabbix raw problem data
+
+CHATOPS SHOULD RETURN:
+1. Root cause hypothesis
+2. What the issue means
+3. Business impact
+4. Likely causes
+5. Immediate remediation steps
+6. Diagnostic commands
+7. Escalation recommendation
+8. Preventive recommendations
+
+EXAMPLE:
+“Disk full on macBook-Air-moetaz”
+→ Explain disk saturation
+→ Possible log overflow
+→ Check large files
+→ Cleanup commands
+→ Monitoring suggestions
+
+━━━━━━━━━━━━━━━━━━
+PHASE 3 — REMOVE PLACEHOLDER BRANDING
+━━━━━━━━━━━━━━━━━━
+
+REMOVE THIS:
+“powered by a free built-in AI. No API key required.”
+
+REPLACE WITH:
+Professional enterprise intro such as:
+“AI Operations Assistant — Incident intelligence, root cause analysis, and remediation guidance.”
+
+OR remove intro message entirely and use clean empty-state UX.
+
+━━━━━━━━━━━━━━━━━━
+PHASE 4 — CHAT UX UPGRADE
+━━━━━━━━━━━━━━━━━━
+
+REQUIRED:
+- Persistent conversation history
+- Incident context chips
+- Suggested prompts:
+   “Analyze this incident”
+   “What caused this?”
+   “How do I fix it?”
+   “Show remediation”
+- Loading indicator
+- Streaming response if possible
+- Markdown formatting
+- Code blocks for commands
+- Copy response
+- Clear chat
+- New conversation
+- Retry failed response
+
+━━━━━━━━━━━━━━━━━━
+PHASE 5 — ZABBIX + AI CORRELATION
+━━━━━━━━━━━━━━━━━━
+
+If user opens incident:
+ChatOps auto-loads:
+- Latest metrics
+- Host availability
+- Trigger history
+- Similar prior incidents
+- Severity trend
+
+OPTIONAL:
+- Correlate multiple alerts
+- Suggest probable upstream issue
+
+━━━━━━━━━━━━━━━━━━
+PHASE 6 — SECURITY
+━━━━━━━━━━━━━━━━━━
+
+MANDATORY:
+- Backend-only AI key
+- No frontend secret leakage
+- Sanitize incident data
+- Log requests
+- Rate limits
+- Admin-configurable provider
+
+━━━━━━━━━━━━━━━━━━
+PHASE 7 — QA VALIDATION
+━━━━━━━━━━━━━━━━━━
+
+Verify:
+- Manual chat works
+- Incident → ChatOps deep link works
+- AI explains real incidents
+- Android APK works
+- No “Could not reach AI”
+- No mock text
+- Professional UX
+- Real actionable remediation
+
+━━━━━━━━━━━━━━━━━━
+DELIVERABLES
+━━━━━━━━━━━━━━━━━━
+
+Provide:
+- Root cause of broken AI
+- Files changed
+- Backend routes added
+- AI provider integrated
+- Incident deep-link flow
+- Removed placeholder text
+- Screenshot:
+   Incident → ChatOps → AI diagnosis
+
+SUCCESS CRITERIA:
+ChatOps becomes a real enterprise AI SRE assistant:
+- Live AI
+- Incident-aware
+- Root cause analysis
+- Remediation guidance
+- Fully operational on mobile

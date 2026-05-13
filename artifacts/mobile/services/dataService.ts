@@ -485,35 +485,65 @@ export async function sendClaude(
   return block.text;
 }
 
-export async function sendFreeAI(
+function getAIBaseUrl(): string {
+  return (
+    process.env.EXPO_PUBLIC_API_URL?.trim() ??
+    (process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "http://10.0.2.2:8080")
+  );
+}
+
+export async function sendAI(
   messages: { role: "user" | "assistant"; content: string }[],
   systemPrompt: string,
 ): Promise<string> {
-  const payload = {
-    model: "openai-large",
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages,
-    ],
-    private: true,
-    seed: Math.floor(Math.random() * 1_000_000),
-  };
+  const base = getAIBaseUrl();
+  const url = `${base}/api/chat`;
 
-  const res = await fetch("https://text.pollinations.ai/openai", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  console.log(`[ChatAI] → POST ${url} (${messages.length} messages)`);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 65_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, systemPrompt }),
+      signal: controller.signal as RequestInit["signal"],
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    const name = (e as Error).name;
+    if (name === "AbortError") throw new Error("TIMEOUT");
+    throw new Error("NETWORK_ERROR");
+  }
+  clearTimeout(timer);
 
   if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`AI service error ${res.status}: ${txt}`);
+    const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
+    if (res.status === 503) throw new Error("AI_NOT_CONFIGURED");
+    if (res.status === 429) throw new Error("RATE_LIMITED");
+    if (res.status === 504) throw new Error("TIMEOUT");
+    throw new Error(json.error ?? `HTTP_${res.status}`);
   }
 
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Empty AI response");
+  const data = (await res.json()) as { content?: string };
+  const content = data.content?.trim();
+  if (!content) throw new Error("EMPTY_RESPONSE");
+  console.log(`[ChatAI] ✓ received ${content.length} chars`);
   return content;
+}
+
+export async function getAIStatus(): Promise<{ ok: boolean; model: string }> {
+  try {
+    const base = getAIBaseUrl();
+    const res = await fetch(`${base}/api/chat/status`);
+    if (!res.ok) return { ok: false, model: "" };
+    return (await res.json()) as { ok: boolean; model: string };
+  } catch {
+    return { ok: false, model: "" };
+  }
 }
