@@ -194,10 +194,16 @@ class ZabbixClient {
   }
 
   private async callViaBackend<T>(method: string, params: unknown): Promise<T> {
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
-    const backendUrl = domain
-      ? `https://${domain}/api/zabbix/rpc`
-      : "http://localhost:8080/api/zabbix/rpc";
+    // Priority: explicit API URL → Replit dev domain → Android-emulator localhost fallback
+    // Set EXPO_PUBLIC_API_URL in your EAS build profile to point to the deployed backend.
+    const apiBase =
+      process.env.EXPO_PUBLIC_API_URL?.trim() ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : null) ??
+      "http://10.0.2.2:8080"; // 10.0.2.2 = host machine from Android emulator
+
+    const backendUrl = `${apiBase}/api/zabbix/rpc`;
 
     console.log(`[ZabbixClient] → ${method} (via backend)`, JSON.stringify({ backendUrl, params }));
 
@@ -283,13 +289,67 @@ class ZabbixClient {
     const apiToken = await this.getApiToken();
     if (!serverUrl) throw new Error("ZABBIX_NOT_CONFIGURED");
     if (!apiToken) throw new Error("API_TOKEN_MISSING");
-    const version = await rpc<string>(serverUrl, "apiinfo.version", {}, null, false);
-    // Run these in parallel after getting version
+
+    // Route through the backend proxy instead of calling Zabbix directly.
+    // This avoids SSL/TLS certificate rejections and CORS issues on Android.
+    // The backend validates the env-configured Zabbix credentials.
+    const apiBase =
+      process.env.EXPO_PUBLIC_API_URL?.trim() ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : null) ??
+      "http://10.0.2.2:8080";
+
+    const healthUrl = `${apiBase}/api/zabbix/health`;
+    console.log(`[ZabbixClient] testConnection via backend health check`, JSON.stringify({ healthUrl }));
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let res: Response;
+    try {
+      res = await fetch(healthUrl, { signal: controller.signal as RequestInit["signal"] });
+    } catch (e) {
+      clearTimeout(timer);
+      const name = (e as Error).name;
+      const msg = (e as Error).message ?? "";
+      console.error(`[ZabbixClient] testConnection health fetch error:`, JSON.stringify({ healthUrl, error: msg }));
+      if (name === "AbortError") throw new Error("TIMEOUT");
+      if (e instanceof TypeError) throw new Error("NETWORK_ERROR");
+      throw e;
+    }
+    clearTimeout(timer);
+
+    const json = (await res.json()) as {
+      ok: boolean;
+      reason?: string;
+      zabbixVersion?: string;
+      zabbixError?: { code: number; data?: string };
+      serverUrlConfigured?: boolean;
+      apiTokenConfigured?: boolean;
+    };
+
+    if (!json.ok) {
+      const reason = json.reason ?? "network_error";
+      if (reason === "env_not_configured") throw new Error("ZABBIX_NOT_CONFIGURED");
+      if (reason === "auth_error") throw new Error(`AUTH_ERROR:${json.zabbixError?.data ?? "Invalid token"}`);
+      if (reason === "ssl_error") throw new Error("SSL_ERROR");
+      if (reason === "dns_error") throw new Error("DNS_ERROR");
+      if (reason === "timeout") throw new Error("TIMEOUT");
+      throw new Error("NETWORK_ERROR");
+    }
+
+    // Fetch live counts in parallel through proxy
     const [hosts, problems] = await Promise.all([
-      rpc<ZabbixHost[]>(serverUrl, "host.get", { output: ["hostid"], limit: 1000 }, apiToken, true),
-      rpc<ZabbixProblem[]>(serverUrl, "problem.get", { output: ["eventid"], limit: 1000 }, apiToken, true),
+      this.callViaBackend<ZabbixHost[]>("host.get", { output: ["hostid"], limit: 1000 }),
+      this.callViaBackend<ZabbixProblem[]>("problem.get", { output: ["eventid"], limit: 1000 }),
     ]);
-    return { version, hostCount: hosts.length, problemCount: problems.length };
+
+    return {
+      version: json.zabbixVersion ?? "?",
+      hostCount: hosts.length,
+      problemCount: problems.length,
+    };
   }
 
   // ─── Core data methods (all via backend proxy) ────────────────────────────

@@ -79,10 +79,28 @@ export function IncidentsWidget({ problems, loading, lastSync, maxItems = 3 }: P
                     color: colors.mutedForeground,
                     fontFamily: "Inter_500Medium",
                     fontSize: 12,
+                    flex: 1,
                   }}
+                  numberOfLines={1}
                 >
                   {inc.host || "Unknown host"}
                 </Text>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push({
+                      pathname: "/(app)/(tabs)/chatops",
+                      params: { incident_id: inc.id },
+                    });
+                  }}
+                  hitSlop={6}
+                  style={[styles.analyzeBtn, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}
+                >
+                  <Feather name="cpu" size={11} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 11 }}>
+                    Analyze
+                  </Text>
+                </Pressable>
               </View>
             </Card>
           </Pressable>
@@ -99,5 +117,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginTop: 8,
+  },
+  analyzeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
   },
 });

@@ -1,0 +1,96 @@
+CRITICAL PRODUCTION BLOCKER — FULL ROOT CAUSE DIAGNOSTIC + COMPLETE FIX REQUIRED
+
+The mobile app is currently crashing with:
+
+ERROR:
+Maximum update depth exceeded
+
+This indicates an infinite render/update loop in React / React Native caused by improper state management, navigation recursion, or unstable dependencies.
+
+YOUR TASK:
+Perform a FULL end-to-end diagnostic of the entire codebase and apply a production-grade permanent fix.
+
+MANDATORY OBJECTIVES:
+
+1. ROOT CAUSE ANALYSIS
+- Scan the full project for every:
+  - useEffect
+  - useLayoutEffect
+  - setState / useState setters
+  - Context Providers
+  - Auth Providers
+  - RootLayout / App.tsx
+  - router.push / router.replace / navigation.navigate
+  - Supabase auth listeners
+  - Zustand / Redux subscriptions
+  - Async initialization flows
+- Identify ALL infinite re-render loops, including:
+  - Missing dependency arrays
+  - Dependencies changing every render
+  - State updates inside render
+  - Recursive redirects
+  - Recreated objects/functions causing effect retriggers
+  - Auth/session refresh loops
+  - Splash/loading loops
+
+2. FIX REQUIREMENTS
+- Add proper dependency arrays where missing
+- Replace unstable inline objects/functions with:
+  - useMemo
+  - useCallback
+- Prevent repeated navigation:
+  - Only redirect when route actually changes
+  - Add guards against redirect loops
+- Refactor auth/session listeners to avoid repeated setState
+- Ensure providers do not recreate values every render
+- Memoize context values
+- Prevent duplicate subscriptions
+- Clean all circular state dependencies
+
+3. EXPO / REACT NATIVE HARDENING
+- Validate:
+  - Expo Router layouts
+  - _layout.tsx
+  - index.tsx
+  - SplashScreen logic
+  - Protected routes
+  - Session restoration
+- Ensure no redirect runs before auth state is resolved
+- Prevent race conditions between loading/session/router
+
+4. LOGGING + DIAGNOSTICS
+- Add temporary structured logs:
+  - Component mount
+  - useEffect triggers
+  - Navigation actions
+  - Auth state changes
+- Clearly identify which component caused the loop
+- Remove diagnostic spam after fix
+
+5. CODE QUALITY
+- Apply enterprise-grade React best practices
+- No quick hacks
+- No disabling warnings
+- No suppressing LogBox
+- No band-aid fixes
+- Fix architecture, not symptoms
+
+6. VALIDATION
+- App must launch successfully in Expo Go / Preview
+- No red screen
+- No maximum update depth error
+- No console render spam
+- Stable navigation
+- Stable auth
+- Stable providers
+
+DELIVERABLES:
+- Exact root cause(s)
+- Files impacted
+- Before/after fixes
+- Why the loop happened
+- What was changed
+- Confirmation that preview works
+
+SUCCESS CRITERIA:
+The app must boot cleanly, render once per intended lifecycle, and function as a stable production-ready mobile app with zero infinite re-render loops.

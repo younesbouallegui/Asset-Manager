@@ -7,8 +7,12 @@
     "hello": "tsx ./src/hello.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/qrcode": "^1.5.5",
     "tsx": "catalog:"
   }
 }

@@ -1,0 +1,132 @@
+UI/UX PRODUCTION POLISH — MOBILE DASHBOARD + NOTIFICATION SYSTEM REFINEMENT
+
+The core platform is now live, but several product-quality UX issues must be corrected to achieve enterprise-grade mobile behavior.
+
+OBJECTIVE:
+Fix dashboard card consistency + real notification badge + native swipe-to-dismiss notifications drawer.
+
+CRITICAL FIXES REQUIRED:
+
+━━━━━━━━━━━━━━━━━━
+1. REAL NOTIFICATION BADGE COUNT
+━━━━━━━━━━━━━━━━━━
+
+CURRENT ISSUE:
+The notification bell icon does not display the live unread notification count.
+
+REQUIRED:
+- Add a dynamic badge counter on the bell icon
+- Badge must show unread active incidents / notifications count
+- Example:
+  If active incidents = 2 → bell shows red badge “2”
+- If zero → hide badge entirely
+- Badge should update live from state/API
+- Badge position:
+  top-right corner of bell icon
+- Style:
+  small red circle, white text, responsive sizing
+
+IMPLEMENTATION:
+- Use live unreadNotificationsCount
+- Sync with incidents state / notifications store
+- Mark notifications as read when viewed (if product logic allows)
+
+━━━━━━━━━━━━━━━━━━
+2. DASHBOARD CARD SIZE CONSISTENCY
+━━━━━━━━━━━━━━━━━━
+
+CURRENT ISSUE:
+“Active incidents” card dimensions/layout feel visually inconsistent compared to other KPI cards.
+
+REQUIRED:
+- Make ALL top dashboard KPI cards identical:
+  - Same width
+  - Same height
+  - Same padding
+  - Same icon spacing
+  - Same border radius
+  - Same typography alignment
+- Use strict shared card component:
+  DashboardStatCard
+- Ensure:
+  Active incidents
+  Hosts online
+  Avg CPU
+  Availability
+  all match pixel-perfect
+
+━━━━━━━━━━━━━━━━━━
+3. NOTIFICATION DRAWER UX (BOTTOM SHEET)
+━━━━━━━━━━━━━━━━━━
+
+CURRENT ISSUE:
+Notifications open from bottom, but dismissal requires tapping outside.
+This feels clunky.
+
+REQUIRED:
+Implement native mobile gesture behavior:
+- Swipe down to close
+- Drag handle visible at top
+- Smooth gesture tracking
+- Spring animation
+- Tap outside should still close
+- Partial drag threshold:
+   if dragged > threshold → dismiss
+   else snap back
+
+PREFERRED:
+Use:
+- @gorhom/bottom-sheet
+OR
+- React Native Modal + PanResponder / Gesture Handler
+
+BOTTOM SHEET REQUIREMENTS:
+- Opens from bottom
+- Rounded top corners
+- Scrollable notification list
+- Swipe-down close
+- Backdrop fade
+- Smooth native feel (iOS + Android)
+
+━━━━━━━━━━━━━━━━━━
+4. INTERACTION POLISH
+━━━━━━━━━━━━━━━━━━
+
+- Bell press → opens notifications drawer
+- Badge clears or decrements properly
+- Notification cards:
+   tap = open incident
+   swipe left/right optional archive/dismiss
+- Haptic feedback if supported
+- No UI jumpiness
+
+━━━━━━━━━━━━━━━━━━
+5. QA VALIDATION
+━━━━━━━━━━━━━━━━━━
+
+Validate:
+- 2 incidents → bell badge = 2
+- 0 incidents → no badge
+- Dashboard cards visually equal
+- Notifications panel swipe-down closes
+- Android + iOS smooth
+- No layout overflow
+- No z-index issues
+
+━━━━━━━━━━━━━━━━━━
+DELIVERABLES
+━━━━━━━━━━━━━━━━━━
+
+Provide:
+- Files modified
+- Shared card component refactor
+- Notification badge logic
+- Bottom sheet implementation
+- Before/after UX summary
+
+SUCCESS CRITERIA:
+The dashboard should feel like a polished enterprise monitoring mobile app:
+- Accurate live badge count
+- Symmetrical KPI cards
+- Native swipe-dismiss notification drawer
+- Smooth premium UX
