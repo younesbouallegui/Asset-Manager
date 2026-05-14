@@ -11,13 +11,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-7dc5.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://asset-manager-tefa.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-7dc5.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://asset-manager-tefa.onrender.com"
       }
     }
   },
